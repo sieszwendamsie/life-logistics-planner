@@ -127,7 +127,7 @@ def long_holidays(c: Constraints, plan: YearPlan, top: int = 4) -> list[Block]:
 
 
 def second_holidays(
-    c: Constraints, plan: YearPlan, long: Block | None, top: int = 4
+    c: Constraints, plan: YearPlan, long: Block | None, top: int = 4, pinned: date | None = None
 ) -> list[Block]:
     """Two weeks somewhere else in the year, apart from the long one, cheapest first."""
     lo, hi = plan.second_holiday_days
@@ -139,11 +139,15 @@ def second_holidays(
             continue
         if long and b.start < long.end + away and long.start - away < b.end:
             continue
+        if plan.second_holiday_months and b.start.month not in plan.second_holiday_months:
+            continue
         found.append(b)
-    # One per month: the best block of each month is enough to choose from.
-    best: dict[int, Block] = {}
+    if pinned:
+        return [b for b in sorted(found, key=_rank) if b.start == pinned][:1]
+    # One per half month: enough to choose from without near-duplicates.
+    best: dict[tuple[int, bool], Block] = {}
     for b in sorted(found, key=_rank):
-        best.setdefault(b.start.month, b)
+        best.setdefault((b.start.month, b.start.day > 15), b)
     return sorted(best.values(), key=_rank)[:top]
 
 
@@ -422,7 +426,10 @@ def build_year(c: Constraints, acc: AccommodationFile) -> YearResult:
         ]
     long_pick = _pick(long_options, plan.long_holiday_start)
     second_options = second_holidays(c, plan, long_pick, top=6)
-    second_pick = _pick(second_options, plan.second_holiday_start)
+    start = plan.second_holiday_start
+    if start and not _pick(second_options, start):
+        second_options = [*second_holidays(c, plan, long_pick, pinned=start), *second_options]
+    second_pick = _pick(second_options, start)
     taken = [b for b in (long_pick, second_pick) if b]
     return YearResult(
         plan=plan,

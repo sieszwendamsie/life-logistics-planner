@@ -167,3 +167,15 @@ def test_preferred_poland_event_pushes_stays_away() -> None:
     )
     moved = build_year(c.model_copy(update={"presence": [wish]}), ACC).stays
     assert all(not (st.start <= wish.start <= st.end) for st in moved)
+
+
+def test_second_holiday_months_and_pin() -> None:
+    r = build_year(_c(second_holiday_months=[3, 4]), ACC)
+    assert r.second_options and all(b.start.month in (3, 4) for b in r.second_options)
+    r = build_year(_c(second_holiday_months=[3, 4], second_holiday_start=date(2027, 3, 6)), ACC)
+    assert r.second_pick and (r.second_pick.start, r.second_pick.end) == (
+        date(2027, 3, 6),
+        date(2027, 3, 21),
+    )
+    assert r.second_pick.paid_days == 10
+    assert all(st.end < date(2027, 3, 6) or st.start > date(2027, 3, 21) for st in r.stays)

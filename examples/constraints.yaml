@@ -122,7 +122,9 @@ year_plan:
   second_holiday_days: [14, 17]  # one 2-week holiday
   holiday_gap_days: 42           # the two holidays at least 6 weeks apart
   winter_extra_days: 2           # Christmas shutdown is busy: at most 2 more days
+  second_holiday_months: [3, 4]  # two-week holiday around March/April
   # long_holiday_start: 2027-07-31   # pin a holiday instead of the best-ranked one
+  # second_holiday_start: 2027-03-06
   fixed_stays:
     - {start: 2027-01-31, end: 2027-02-21, note: "office stay (example)"}
   # School holidays: prices are higher. Check the official calendars each year.

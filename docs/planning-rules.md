@@ -43,7 +43,9 @@ Real values (home address, prices) live in the gitignored `data/` files.
     school-holiday days (`year_plan.peaks`, from the official school calendars).
   - Long holiday: 28 to 31 days that contain the whole summer shutdown.
   - Two-week holiday: 14 to 17 days, at least 6 weeks from the long one, not on
-    an office period, a decided stay or a shutdown.
+    an office period, a decided stay or a shutdown. Martin prefers it in March or
+    April (`second_holiday_months`); for 2027 around Basia's birthday
+    (`second_holiday_start`).
   - Long weekends: for each Italian holiday on a weekday, the free version and
     the versions with 1 or 2 bridge days.
   - Christmas: the shutdown plus at most 2 paid days.

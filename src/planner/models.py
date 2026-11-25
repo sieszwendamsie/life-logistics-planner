@@ -277,6 +277,8 @@ class YearPlan(BaseModel):
     # The two big holidays should be at least this many days apart.
     holiday_gap_days: int = Field(default=42, ge=0)
     winter_extra_days: int = Field(default=2, ge=0)
+    # Months the two-week holiday should fall in (empty: any month), e.g. [3, 4].
+    second_holiday_months: list[int] = Field(default_factory=list)
     # Pick these holidays (by start date) instead of the best-ranked ones.
     long_holiday_start: date | None = None
     second_holiday_start: date | None = None
