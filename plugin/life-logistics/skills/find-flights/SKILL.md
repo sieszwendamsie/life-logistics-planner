@@ -54,17 +54,21 @@ Each "no direct flight on your routes yet" line is an open journey: who, directi
 and day. Check the recommended option first, then the others. Do not check more
 than about 10 journeys in one go; ask Martin before doing more.
 
-## 1b. Try the script first (Ryanair month view)
+## 1b. Pick the fare source (generic step)
 
-```
-uv run planner fares --month YYYY-MM
-```
+Every flight check goes through one of these sources, in this order. Use the first
+that works and record which one it was in `source_url`:
 
-It asks Ryanair's own fare API for every route and lists the days inside the time
-windows, with source and check time. If a route says "NOT live-checked", the API was
-blocked or changed: do that route in the browser (step 2) and never guess. Results
-are candidates (cheapest flight per day, no flight number): still confirm finalists
-on the select page. Wizz is not covered (browser or Momondo only).
+1. **A live-fare helper in this repo**, if one exists. Today:
+   `uv run planner fares --month YYYY-MM` (Ryanair only; Wizz is not covered).
+   It lists the days inside the time windows with times, price, source and check
+   time. It shows the cheapest flight per day and no flight number, so results are
+   candidates: still open the airline page for finalists. A route marked
+   "NOT live-checked" means the API was blocked or changed: use step 2 for it.
+2. **The airline's own site in the browser** (section 2 below).
+3. **Momondo**, only to discover other airlines or a cheaper fare.
+
+If none can be checked live, say so and leave the journey open.
 
 ## 2. Search in the browser (fast path)
 

@@ -532,3 +532,40 @@ def test_family_comes_early_on_a_weekend_for_a_short_city_break() -> None:
     [o2] = build_options(c, places, OptionsFile.model_validate({"options": flights}), win)
     assert o2.open_ground == o.open_ground - 1
     assert any("€139" in x for x in o2.cons)
+
+
+def test_arriving_on_a_working_morning_goes_straight_to_the_office() -> None:
+    # Door to door ends at the office for a weekday arrival (landing 10:00 + 0.5 h
+    # + 1 h to Faenza = 11:30, before the 12:00 cut-off), at Faenza on a weekend.
+    c = with_travel(travel={**TRAVEL, "car": None})
+    back = flight("r", "return", "BLQ", "POZ", "2027-02-22")
+    mon = OptionsFile.model_validate(
+        {"options": [flight("mon", "outbound", "POZ", "BLQ", "2027-02-01"), back]}
+    )
+    sat = OptionsFile.model_validate(
+        {"options": [flight("sat", "outbound", "POZ", "BLQ", "2027-02-06"), back]}
+    )
+    [o] = build_options(c, PLACES, mon, [w("2027-02-01", "2027-02-22")])
+    assert o.journeys[0].end == "the office"
+    [o] = build_options(c, PLACES, sat, [w("2027-02-06", "2027-02-22")])
+    assert o.journeys[0].end == "Faenza"
+
+
+def test_days_off_are_weekends_italian_holidays_shutdown_and_leave() -> None:
+    c = Constraints.model_validate(
+        {
+            **CONSTRAINTS.model_dump(mode="json"),
+            "holidays": [
+                {"day": "2027-06-02", "country": "IT", "name": "Republic Day"},
+                {"day": "2027-05-03", "country": "PL", "name": "Constitution Day"},
+            ],
+            "shutdown": [{"start": "2027-08-09", "end": "2027-08-20"}],
+            "leave": [{"start": "2027-03-10", "end": "2027-03-11"}],
+        }
+    )
+    assert c.day_off(date(2027, 2, 6))  # Saturday
+    assert c.day_off(date(2027, 6, 2))  # Italian public holiday: office closed
+    assert c.day_off(date(2027, 8, 12))  # shutdown
+    assert c.day_off(date(2027, 3, 11))  # leave
+    assert not c.day_off(date(2027, 5, 3))  # Polish holiday: a paid working day
+    assert not c.day_off(date(2027, 2, 9))  # ordinary Tuesday
