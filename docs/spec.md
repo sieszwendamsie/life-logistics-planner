@@ -39,7 +39,8 @@ review loop works.
 Personal data stays **out of git**. Real files live in `data/` (gitignored).
 `examples/` holds fake data with the same shape, used by tests and as a template.
 
-- `constraints.yaml`: stay rules (stay 21–28 days, gap 28–35 days), last return
+- `constraints.yaml`: stay rules (stay 21–28 days; gap between trips at least
+  14 days, usually 4–5 weeks, at most 35), last return
   date, required/preferred office days in Italy, dates Martin must be in Poznań,
   family dates (together or separately).
 - `accommodation.yaml`: preferred apartment availability (from the host, or a
@@ -76,9 +77,13 @@ Personal data stays **out of git**. Real files live in `data/` (gitignored).
    2–4 options ranked by timing first (route choice, door-to-door time per
    person), cost last, with pros/cons and a recommendation,
    and writes `out/report.html` (timeline PL/IT, comparison table, map links).
-6. **Iterate.** Martin says e.g. "two more days in Poznań"; Claude updates the
+6. **Scenarios.** Before Martin picks a flight or date, `planner scenarios`
+   shows what each choice means for the next stay, side by side. Example:
+   `--back 2027-01-02="FR 2194" --back 2027-01-06="FR 1750"` lists the best
+   next-stay options for each possible day back in Poznań.
+7. **Iterate.** Martin says e.g. "two more days in Poznań"; Claude updates the
    data and re-runs steps 2–5.
-7. **Approve.** Only after Martin explicitly picks an option, Claude adds the
+8. **Approve.** Only after Martin explicitly picks an option, Claude adds the
    events to Google Calendar and lists the bookings Martin should make himself.
 
 ## 5. Out of scope for the MVP
