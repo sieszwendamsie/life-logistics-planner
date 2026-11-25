@@ -171,7 +171,7 @@ TRAVEL = {
         {"name": "second", "origins": ["POZ"], "destinations": ["BGY"]},
     ],
     "transfer_hours": {"POZ": 0.5, "BLQ": 1, "BGY": 3},
-    "car": {"drive_hours": 13, "min_stay_days": 21, "clear_days": 7},
+    "car": {"drive_hours": 13, "min_stay_days": 21, "clear_days": 7, "days_off_only": False},
 }
 
 
