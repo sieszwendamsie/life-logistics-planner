@@ -4,15 +4,17 @@ Commands:
   windows   list feasible date windows for the next stay in Italy
   options   combine windows, accommodation and journeys into a short list of options
   scenarios compare what each possible return date means for the next stay
+  report    the same as scenarios, drawn as one HTML page (out/report.html)
 """
 
 import argparse
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 from planner import __version__
 from planner.loaders import load_accommodation, load_constraints, load_options
 from planner.options import Option, build_options, shortlist
+from planner.report import render, scenario, write
 from planner.windows import find_windows
 
 DEFAULT_CONSTRAINTS = Path("data/constraints.yaml")
@@ -67,6 +69,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="a possible day back in Poznań, e.g. 2027-01-02='FR 2194 12:00'. Repeat it.",
     )
     scen.add_argument("--top", type=int, default=3, help="options to show per scenario")
+
+    rep = sub.add_parser("report", help="write the options and scenarios as an HTML page")
+    for name, default in (
+        ("constraints", DEFAULT_CONSTRAINTS),
+        ("accommodation", DEFAULT_ACCOMMODATION),
+        ("transport", DEFAULT_TRANSPORT),
+    ):
+        rep.add_argument(
+            f"--{name}", type=Path, default=default, help=f"{name} file (default: {default})"
+        )
+    rep.add_argument(
+        "--back",
+        action="append",
+        default=[],
+        metavar="DATE[=LABEL]",
+        help="a possible day back in Poznań (repeat it). Default: last_return.",
+    )
+    rep.add_argument("--top", type=int, default=3, help="options per scenario")
+    rep.add_argument("--out", type=Path, default=Path("out/report.html"), help="output file")
     return parser
 
 
@@ -143,6 +164,11 @@ def _cmd_options(args: argparse.Namespace) -> int:
     return 0
 
 
+def _parse_back(item: str) -> tuple[date, str]:
+    day_text, _, name = item.partition("=")
+    return date.fromisoformat(day_text), name
+
+
 def _cmd_scenarios(args: argparse.Namespace) -> int:
     for path in (args.constraints, args.accommodation, args.transport):
         if not path.exists():
@@ -151,25 +177,37 @@ def _cmd_scenarios(args: argparse.Namespace) -> int:
     base = load_constraints(args.constraints)
     accommodation = load_accommodation(args.accommodation)
     transport = load_options(args.transport)
-    rules = base.stay_rules
     for item in args.back:
-        day_text, _, name = item.partition("=")
-        back = date.fromisoformat(day_text)
-        c = base.model_copy(update={"last_return": back})
-        earliest = back + timedelta(days=rules.min_gap_days)
-        latest = back + timedelta(days=rules.max_gap_days)
+        back, name = _parse_back(item)
+        s = scenario(base, accommodation, transport, back, name, args.top)
         title = f"Back in Poznań {back:%a %d %b %Y}" + (f" ({name})" if name else "")
         print("=" * len(title))
         print(title)
         print("=" * len(title))
-        print(f"Next stay can start {earliest:%a %d %b} to {latest:%a %d %b}.")
-        best = shortlist(build_options(c, accommodation, transport, find_windows(c)), n=args.top)
-        if not best:
+        print(f"Next stay can start {s.earliest:%a %d %b} to {s.latest:%a %d %b}.")
+        if not s.options:
             print("No feasible option.\n")
             continue
         print()
-        for label, o in zip("ABCDEFGHIJ", best, strict=False):
+        for label, o in zip("ABCDEFGHIJ", s.options, strict=False):
             _print_option(label, o)
+    return 0
+
+
+def _cmd_report(args: argparse.Namespace) -> int:
+    for path in (args.constraints, args.accommodation, args.transport):
+        if not path.exists():
+            print(f"No file at {path}. The examples/ folder has a template for each file.")
+            return 1
+    base = load_constraints(args.constraints)
+    accommodation = load_accommodation(args.accommodation)
+    transport = load_options(args.transport)
+    backs = [_parse_back(item) for item in args.back] or [(base.last_return, "")]
+    scenarios = [
+        scenario(base, accommodation, transport, back, name, args.top) for back, name in backs
+    ]
+    path = write(render(scenarios, base, accommodation), args.out)
+    print(f"Wrote {path}")
     return 0
 
 
@@ -182,5 +220,7 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_options(args)
     if args.command == "scenarios":
         return _cmd_scenarios(args)
+    if args.command == "report":
+        return _cmd_report(args)
     parser.print_help()
     return 0

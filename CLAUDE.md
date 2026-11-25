@@ -19,6 +19,7 @@ No web app in the MVP.
 - `uv run planner --help`: show commands
 - `uv run planner windows` / `uv run planner options`: dates and full options
 - `uv run planner scenarios --back DATE[=LABEL] ...`: compare return choices
+- `uv run planner report --back ...`: same as scenarios, as a page in out/report.html
 
 ## Owner
 Martin is learning Claude Code from beginner to pro. When you add a new kind of file
