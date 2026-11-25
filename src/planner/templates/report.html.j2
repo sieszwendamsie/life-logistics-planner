@@ -1,0 +1,251 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Next stay plan</title>
+<style>
+:root {
+  --bg: #f7f5f0; --surface: #ffffff; --ink: #1f2328; --muted: #5d636b; --line: #dedad2;
+  --pl: #c9d3df; --it: #3f8f6b; --solo: #e0a23a; --uk: #6d6fc4; --block: #b8473a;
+  --window: rgba(63, 143, 107, 0.10); --accent: #2d6a4f; --chip: #eef0ec;
+  --open: #9a5b00; --ok: #2d6a4f;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171a; --surface: #1e2125; --ink: #e8e6e1; --muted: #a2a8ae; --line: #33373c;
+    --pl: #3a4552; --it: #4fa881; --solo: #e6b04f; --uk: #8b8de0; --block: #e06a5c;
+    --window: rgba(79, 168, 129, 0.14); --accent: #7cc5a1; --chip: #2a2e33;
+    --open: #e6b04f; --ok: #7cc5a1;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171a; --surface: #1e2125; --ink: #e8e6e1; --muted: #a2a8ae; --line: #33373c;
+  --pl: #3a4552; --it: #4fa881; --solo: #e6b04f; --uk: #8b8de0; --block: #e06a5c;
+  --window: rgba(79, 168, 129, 0.14); --accent: #7cc5a1; --chip: #2a2e33;
+  --open: #e6b04f; --ok: #7cc5a1;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main {
+  max-width: 1040px; margin: 0 auto;
+  padding: 24px max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left));
+}
+h1 { font-size: 1.6rem; margin: 0 0 4px; }
+h2 { font-size: 1.2rem; margin: 0; }
+h3 { font-size: 1rem; margin: 0; }
+.sub { color: var(--muted); margin: 0; }
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 16px; margin: 16px 0;
+}
+.rec { border-color: var(--accent); border-width: 2px; }
+.badge {
+  display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 2px 8px;
+  border-radius: 999px; background: var(--accent); color: var(--surface); vertical-align: middle;
+}
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.85rem; color: var(--muted); }
+.legend span::before {
+  content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px;
+  margin-right: 6px; vertical-align: -2px; background: var(--c);
+}
+.legend .hatch::before {
+  background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 5px);
+}
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.is-rec td { background: var(--window); }
+
+/* timeline */
+.tl { position: relative; margin-top: 12px; }
+.tl-row { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 8px; }
+.tl-who { font-size: 0.8rem; color: var(--muted); text-align: right; }
+.tl-track { position: relative; height: 22px; }
+.tl-axis { height: 22px; font-size: 0.72rem; color: var(--muted); }
+.tick { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.tick.major { font-weight: 700; color: var(--ink); }
+.seg { position: absolute; top: 3px; height: 16px; border-radius: 3px; }
+.seg.pl { background: var(--pl); }
+.seg.it { background: var(--it); }
+.seg.solo { background: var(--solo); }
+.seg.uk { background: var(--uk); }
+.mk {
+  position: absolute; top: -1px; transform: translateX(-50%); width: 20px; height: 20px;
+  border-radius: 50%; background: var(--surface); border: 1.5px solid var(--ink);
+  display: grid; place-items: center;
+}
+.mk svg { width: 12px; height: 12px; fill: var(--ink); }
+.overlay { position: absolute; top: 0; bottom: 0; pointer-events: none; }
+.overlay.block {
+  background: repeating-linear-gradient(135deg, var(--block) 0 2px, transparent 2px 6px);
+  opacity: 0.45;
+}
+.overlay.win { background: var(--window); border-left: 1px dashed var(--accent);
+  border-right: 1px dashed var(--accent); }
+.overlay.fixed { width: 0; border-left: 2px solid var(--block); }
+.tl-overlays { position: absolute; top: 0; bottom: 0; left: 100px; right: 0; }
+.opt-label { font-size: 0.8rem; font-weight: 700; margin: 10px 0 2px 100px; }
+
+/* option cards */
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;
+  margin-top: 16px; }
+.opt { border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.opt.rec { border: 2px solid var(--accent); }
+.facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.chip { background: var(--chip); border-radius: 6px; padding: 2px 8px; font-size: 0.8rem; }
+ul { margin: 6px 0; padding-left: 18px; }
+li { margin: 2px 0; }
+.pros li::marker { content: "+  "; color: var(--ok); font-weight: 700; }
+.cons li::marker { content: "–  "; color: var(--block); font-weight: 700; }
+.legs { list-style: none; padding: 0; font-size: 0.85rem; }
+.legs li { display: grid; grid-template-columns: 82px 1fr; gap: 6px; padding: 3px 0;
+  border-top: 1px solid var(--line); }
+.st-open { color: var(--open); font-weight: 600; }
+.st-checked { color: var(--ok); }
+details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
+footer { color: var(--muted); font-size: 0.8rem; margin-top: 24px; }
+@media (max-width: 560px) {
+  .tl-row { grid-template-columns: 56px 1fr; }
+  .tl-overlays { left: 64px; }
+  .opt-label { margin-left: 64px; }
+  .tl-who { font-size: 0.7rem; }
+}
+</style>
+
+{% macro icon(name) -%}
+{% if name == "car" %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11a2 2 0 0 1 2 2v4h-2v2h-3v-2H8v2H5v-2H3v-4a2 2 0 0 1 2-2zm2.1 0h9.8l-1-3H8.1zM6.5 15a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm11 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>
+{%- else %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>
+{%- endif %}
+{%- endmacro %}
+
+{% macro hours(h) %}{{ "%.0f h"|format(h) if h is not none else "? h" }}{% endmacro %}
+
+<main>
+  <h1>Next stay in Faenza</h1>
+  <p class="sub">Generated {{ generated.strftime("%d %b %Y") }}. Proposals only, nothing is booked.</p>
+
+  {% if recommended %}
+  <section class="card rec">
+    <span class="badge">Recommended</span>
+    <h2 style="margin-top:8px">{{ rec_scenario.title }}{% if rec_scenario.label %} ({{ rec_scenario.label }}){% endif %},
+      then {{ recommended.start.strftime("%a %d %b") }} to {{ recommended.end.strftime("%a %d %b") }}</h2>
+    <p class="sub">{{ recommended.nights }} nights. {{ recommended.mode }}.
+      {% if recommended.family_together %}Family together at {{ house }} the whole stay.{% endif %}{{ " " }}
+      {%- if recommended.open_flights %}{{ recommended.open_flights }} flight(s) still to check live.{% endif %}</p>
+  </section>
+  {% endif %}
+
+  <section class="card">
+    <h2>Compare</h2>
+    <p class="sub">Best option for each possible day back. Timing first, cost last.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Day back</th><th>Next stay</th><th>Nights</th><th>Family</th><th>Travel</th>
+          <th>Door to door (M / P+B)</th><th>Flights</th>
+        </tr></thead>
+        <tbody>
+        {% for s in scenarios %}
+          {% set o = s.best %}
+          <tr class="{{ 'is-rec' if o and o.recommended }}">
+            <td><a href="#s{{ s.index }}">{{ s.back.strftime("%a %d %b") if s.back else "–" }}</a>
+              {% if s.label %}<br><span class="sub">{{ s.label }}</span>{% endif %}</td>
+            {% if o %}
+            <td class="num">{{ o.start.strftime("%d %b") }} to {{ o.end.strftime("%d %b") }}</td>
+            <td class="num">{{ o.nights }}</td>
+            <td>{{ "Together" if o.family_together else "Martin alone part of it" }}</td>
+            <td>{{ o.mode }}</td>
+            <td class="num">{{ hours(o.martin_hours) }} / {{ hours(o.family_hours) }}</td>
+            <td>{% if o.open_flights %}<span class="st-open">{{ o.open_flights }} to check</span>{% else %}<span class="st-checked">checked</span>{% endif %}</td>
+            {% else %}
+            <td colspan="6">No feasible option</td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="legend" aria-label="Legend">
+    <span style="--c: var(--pl)">Poland</span>
+    <span style="--c: var(--it)">Italy, {{ house }}</span>
+    <span style="--c: var(--solo)">Martin alone</span>
+    <span style="--c: var(--uk)">UK</span>
+    <span class="hatch">{{ house }} not available</span>
+    <span style="--c: var(--window)">Allowed start days</span>
+    <span style="--c: var(--block)">Must be in Poland</span>
+  </div>
+
+  {% for s in scenarios %}
+  <section class="card" id="s{{ s.index }}">
+    <h2>{{ s.title }}{% if s.label %} <span class="sub">({{ s.label }})</span>{% endif %}</h2>
+    {% if s.window_text %}<p class="sub">{{ s.window_text }}.</p>{% endif %}
+
+    {% if s.options %}
+    <div class="tl">
+      <div class="tl-row">
+        <div></div>
+        <div class="tl-track tl-axis">
+          {% for t in s.ticks %}<span class="tick{{ ' major' if t.major }}" style="left:{{ t.left }}%">{{ t.text }}</span>{% endfor %}
+        </div>
+      </div>
+      <div style="position:relative">
+        <div class="tl-overlays">
+          {% if s.window_band %}<div class="overlay win" style="left:{{ s.window_band.left }}%;width:{{ s.window_band.width }}%" title="{{ s.window_band.title }}"></div>{% endif %}
+          {% for b in s.house_blocks %}<div class="overlay block" style="left:{{ b.left }}%;width:{{ b.width }}%" title="{{ b.title }}"></div>{% endfor %}
+          {% for f in s.fixed %}<div class="overlay fixed" style="left:{{ f.left }}%" title="{{ f.title }}"></div>{% endfor %}
+        </div>
+        {% for o in s.options %}
+        <div class="opt-label">Option {{ o.letter }}{% if o.recommended %} · recommended{% endif %}</div>
+        {% for r in o.rows %}
+        <div class="tl-row">
+          <div class="tl-who">{{ r.who }}</div>
+          <div class="tl-track">
+            {% for g in r.segments %}<div class="seg {{ g.kind }}" style="left:{{ g.left }}%;width:{{ g.width }}%" title="{{ g.title }}"></div>{% endfor %}
+            {% for m in r.markers %}<div class="mk" style="left:{{ m.left }}%" title="{{ m.title }}">{{ icon(m.icon) }}</div>{% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+    {% if s.fixed %}
+    <p class="sub" style="font-size:0.8rem;margin-top:8px">Fixed dates: {% for f in s.fixed %}{{ f.title }}{{ "; " if not loop.last }}{% endfor %}</p>
+    {% endif %}
+
+    <div class="opts">
+      {% for o in s.options %}
+      <article class="opt{{ ' rec' if o.recommended }}">
+        <h3>Option {{ o.letter }}: {{ o.start.strftime("%a %d %b") }} to {{ o.end.strftime("%a %d %b") }}
+          {% if o.recommended %}<span class="badge">Recommended</span>{% endif %}</h3>
+        <div class="facts">
+          <span class="chip">{{ o.nights }} nights</span>
+          <span class="chip">{{ o.mode }}</span>
+          <span class="chip">Travel: Martin {{ hours(o.martin_hours) }}, P+B {{ hours(o.family_hours) }}</span>
+        </div>
+        {% if o.pros %}<ul class="pros">{% for p in o.pros %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
+        {% if o.cons %}<ul class="cons">{% for c in o.cons %}<li>{{ c }}</li>{% endfor %}</ul>{% endif %}
+        <details{{ ' open' if o.recommended }}>
+          <summary>Journeys ({{ o.legs|length }})</summary>
+          <ul class="legs">
+            {% for l in o.legs %}
+            <li><span>{{ l.day }}</span><span>{{ l.who }}: <span class="st-{{ l.status }}">{{ l.what }}</span></span></li>
+            {% endfor %}
+          </ul>
+        </details>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p>No feasible option for this day back. Loosen the stay rules or check the house dates.</p>
+    {% endif %}
+  </section>
+  {% endfor %}
+
+  <footer>Made by <code>planner report</code> from data/ (constraints, accommodation, options).
+    Flight times and prices only from live airline or Momondo checks.</footer>
+</main>
