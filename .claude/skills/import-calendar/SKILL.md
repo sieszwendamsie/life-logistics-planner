@@ -27,7 +27,7 @@ committed files.
 
 Call `list_calendars` and pick by name: **Travel**, **Family**, **Important**,
 **Work**. If one is missing (Work may not exist yet), say so and continue.
-Skip "Proposed schedule" (planner output) and "Holidays in Poland".
+Also read **Holidays in Poland** (step 5). Skip "Proposed schedule" (planner output).
 
 Planning horizon: `horizon` in constraints, or today to six months from today.
 Read each calendar with `list_events`, ordered by start time.
@@ -80,9 +80,27 @@ presence:
   - {title: Logopeda, start: 2027-01-13, end: 2027-01-13, where: PL, who: [Basia], strength: must}
 ```
 
-Office days in Italy come from the Work calendar as `#IT #Martin` events.
+## 5. Work calendar (special titles) and public holidays
 
-## 5. Check and report
+In the Work calendar, these titles are not presence events:
+
+| Event | What to write |
+|---|---|
+| `PUBLIC HOLIDAY` | Italian public holiday: `holidays: - {day: ..., country: IT}` (one per day) |
+| `#shutdown` in title or description | Office closed, forced holiday: a `shutdown` range |
+| `#holiday` | Martin's own leave: a `leave` range (no work stay is planned over it) |
+| `Poznań`, `Faenza`, `UK` all-day blocks | Where Martin is. A `Faenza` or `UK` block is part of a trip: add it to `other_travel`, and if it is the latest trip, its last day + 1 is a candidate `last_return` (ask Martin if it differs from the Travel calendar) |
+| `Poznań > Faenza` and similar | Travel day of a trip; use only for trip start and end |
+
+Events tagged `#IT #Martin` (for example `Required in Faenza #Martin`) are office
+days: write them to `office_required`, or as `presence` with `where: IT`.
+
+Polish public holidays come from the **Holidays in Poland** calendar: take only
+events whose description says `Public holiday` (skip `Observance`), as
+`holidays: - {day: ..., country: PL, name: ...}`. Replace the whole `holidays`,
+`shutdown` and `leave` lists on each import.
+
+## 6. Check and report
 
 1. Run `uv run planner windows --constraints data/constraints.yaml --limit 5`.
    If loading fails, fix the YAML and run it again.

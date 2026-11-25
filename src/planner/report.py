@@ -87,6 +87,7 @@ class OptionView:
     cons: list[str]
     rows: list[Row]
     open_flights: int
+    family_text: str = ""
     recommended: bool = False
 
 
@@ -218,6 +219,7 @@ def _option_rank(o: Option) -> tuple:
         not o.family_together,
         not o.martin_drives,
         o.worst_tier,
+        o.soft,
         o.travel_hours,
         o.total_cost_eur,
     )
@@ -262,7 +264,13 @@ def build_view(
             solo += [(o.house_end, w.end)] * (o.house_end < w.end)
             rows = [
                 _person_row(axis, "Martin", (w.start, w.end), solo, o),
-                _person_row(axis, "Paula + Basia", (o.house_start, o.house_end), [], o),
+                _person_row(
+                    axis,
+                    "Paula + Basia",
+                    (o.family_start or o.house_start, o.family_end or o.house_end),
+                    [],
+                    o,
+                ),
             ]
             view.options.append(
                 OptionView(
@@ -291,6 +299,11 @@ def build_view(
                     ],
                     rows=rows,
                     open_flights=len(o.missing_legs),
+                    family_text=(
+                        f"Paula and Basia at {o.house.name} "
+                        f"{(o.family_start or o.house_start):%d %b} to "
+                        f"{(o.family_end or o.house_end):%d %b}."
+                    ),
                 )
             )
         if view.options:

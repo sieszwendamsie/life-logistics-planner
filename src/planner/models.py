@@ -4,7 +4,7 @@ Pydantic checks each file when it is loaded, so a typo such as an end date
 before its start date fails with a clear message instead of giving wrong plans.
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -84,6 +84,19 @@ class CarSettings(BaseModel):
     clear_days: int = Field(default=7, ge=0)
 
 
+class FamilyFlights(BaseModel):
+    """Paula and Basia's flight preferences (soft: they only change the ranking).
+
+    Their flight day may move up to `shift_days` into the stay (later out, earlier
+    back) to reach a weekend or a flight at a better time.
+    """
+
+    weekend: bool = True  # prefer Saturday or Sunday
+    earliest: time = time(10, 0)  # preferred departure window
+    latest: time = time(18, 0)
+    shift_days: int = Field(default=4, ge=0)
+
+
 class Travel(BaseModel):
     """How Martin and the family like to travel."""
 
@@ -93,6 +106,9 @@ class Travel(BaseModel):
     # Hours from each airport to home (Poznań or Faenza), used for door-to-door time.
     transfer_hours: dict[str, float] = Field(default_factory=dict)
     car: CarSettings | None = None
+    family_flights: FamilyFlights = Field(default_factory=FamilyFlights)
+    # Try not to fly on long weekends (prices are higher). Soft rule.
+    avoid_long_weekends: bool = True
 
 
 class OnwardTrip(BaseModel):
@@ -105,6 +121,14 @@ class OnwardTrip(BaseModel):
     name: str
     airports: list[str]  # IATA codes in the third country, e.g. LTN, STN
     nights: int = Field(ge=1)  # nights spent there before flying home
+
+
+class Holiday(BaseModel):
+    """A public holiday in Poland or Italy (office closed there)."""
+
+    day: date
+    country: Literal["PL", "IT"]
+    name: str = ""
 
 
 class Constraints(BaseModel):
@@ -128,15 +152,21 @@ class Constraints(BaseModel):
     onward: OnwardTrip | None = None
     # Who must be where, per person (usually imported from the calendars).
     presence: list[Presence] = Field(default_factory=list)
+    # Public holidays in Poland and Italy. Martin prefers to be in Poland on them.
+    holidays: list[Holiday] = Field(default_factory=list)
+    # Office closed, forced holiday (#shutdown in the Work calendar).
+    shutdown: list[DateRange] = Field(default_factory=list)
+    # Martin's own leave (#holiday). No work stay is planned over these days.
+    leave: list[DateRange] = Field(default_factory=list)
 
     def martin_away(self) -> list[DateRange]:
-        """Days Martin must be outside Italy (Poznań dates and #PL/#UK must events)."""
+        """Days Martin must be outside Italy (Poznań dates, leave, #PL/#UK must events)."""
         tagged = [
             p
             for p in self.presence
             if "Martin" in p.who and p.where in ("PL", "UK") and p.strength == "must"
         ]
-        return [*self.poznan_required, *tagged]
+        return [*self.poznan_required, *self.leave, *tagged]
 
     def martin_italy(self) -> list[DateRange]:
         """Days Martin must be in Italy (office periods and #IT must events)."""
