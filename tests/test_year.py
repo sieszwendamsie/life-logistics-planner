@@ -179,3 +179,17 @@ def test_second_holiday_months_and_pin() -> None:
     )
     assert r.second_pick.paid_days == 10
     assert all(st.end < date(2027, 3, 6) or st.start > date(2027, 3, 21) for st in r.stays)
+
+
+def test_free_days_off_cover_long_weekends_and_shutdowns() -> None:
+    from planner.year_report import free_days_off
+
+    free = free_days_off(_c(), 2027)
+    # Easter Monday: Sat 27 to Mon 29 Mar; All Saints: Sat 30 Oct to Mon 1 Nov.
+    assert {date(2027, 3, 27), date(2027, 3, 28), date(2027, 3, 29)} <= set(free)
+    assert {date(2027, 10, 30), date(2027, 10, 31), date(2027, 11, 1)} <= set(free)
+    assert date(2027, 3, 26) not in free  # Good Friday is a working day
+    # A midweek holiday alone; the shutdown with its weekends.
+    assert date(2027, 12, 8) in free and date(2027, 12, 7) not in free
+    assert date(2027, 1, 3) in free and date(2027, 8, 22) in free
+    assert date(2027, 3, 6) not in free  # a plain weekend

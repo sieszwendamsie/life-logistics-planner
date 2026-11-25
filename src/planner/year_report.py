@@ -21,20 +21,56 @@ class Cell:
     it: bool  # Italian public holiday
     pl: bool  # Polish public holiday
     title: str
+    off: bool = False  # a free day off inside a Faenza stay (outlined in holiday colour)
 
 
-def _kind(c: Constraints, r: YearResult, d: date) -> tuple[str, str]:
+def free_days_off(c: Constraints, year: int) -> dict[date, str]:
+    """Days off that cost nothing beyond weekends: shutdowns and Italian holidays on
+    a weekday, each with the whole run of free days around it (a long weekend)."""
+    seeds: dict[date, str] = {}
+    for s in c.shutdown:
+        d = s.start
+        while d <= s.end:
+            seeds[d] = "Shutdown (office closed)"
+            d += timedelta(days=1)
+    for h in c.holidays:
+        if h.country == "IT" and h.day.weekday() < 5:
+            seeds.setdefault(h.day, f"Italian holiday: {h.name}" if h.name else "Italian holiday")
+    # Mark every run of days off (weekends included) that holds such a day.
+    days: dict[date, str] = {}
+    d = date(year, 1, 1) - timedelta(days=14)
+    last = date(year, 12, 31) + timedelta(days=14)
+    while d <= last:
+        if not c.day_off(d):
+            d += timedelta(days=1)
+            continue
+        run = []
+        while c.day_off(d):
+            run.append(d)
+            d += timedelta(days=1)
+        why = next((seeds[x] for x in run if x in seeds), None)
+        if why is None:
+            continue
+        for x in run:
+            if x.year == year:
+                days[x] = seeds.get(x) or f"Long weekend ({why})"
+    return days
+
+
+def _kind(c: Constraints, r: YearResult, d: date, free: dict[date, str]) -> tuple[str, str]:
     for st in r.stays:
         if st.start <= d <= st.end:
             label = f"Faenza {st.start:%d %b} to {st.end:%d %b}"
             if d in (st.start, st.end):
                 label += " (travel day)"
+            if d in free:
+                label += f" · {free[d]}"
             return ("solo" if _blocked(st, d) else "stay"), label
     for b in r.holidays:
         if b.start <= d <= b.end:
             return "holiday", f"Holiday {b.start:%d %b} to {b.end:%d %b}"
-    if any(s.start <= d <= s.end for s in c.shutdown):
-        return "shutdown", "Shutdown (office closed)"
+    if d in free:
+        return "holiday", free[d]
     return "home", "Poznań"
 
 
@@ -45,13 +81,14 @@ def _blocked(st: Stay, d: date) -> bool:
 def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell]]]:
     it = {h.day: h.name for h in c.holidays if h.country == "IT"}
     pl = {h.day: h.name for h in c.holidays if h.country == "PL"}
+    free = free_days_off(c, r.plan.year)
     rows = []
     for m in range(1, 13):
         first = date(r.plan.year, m, 1)
         cells = []
         d = first
         while d.month == m:
-            kind, title = _kind(c, r, d)
+            kind, title = _kind(c, r, d, free)
             extra = [f"IT: {it[d]}" for _ in [0] if d in it] + [
                 f"PL: {pl[d]}" for _ in [0] if d in pl
             ]
@@ -63,6 +100,7 @@ def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell]]]:
                     it=d in it,
                     pl=d in pl,
                     title=f"{d:%a %d %b}: {title}" + (f" · {' · '.join(extra)}" if extra else ""),
+                    off=kind in ("stay", "solo") and d in free,
                 )
             )
             d += timedelta(days=1)
@@ -136,7 +174,8 @@ def render_year(c: Constraints, r: YearResult) -> str:
         date(r.plan.year, 1, 1) + timedelta(days=i)
         for i in range((date(r.plan.year, 12, 31) - date(r.plan.year, 1, 1)).days + 1)
     ]
-    kinds = [_kind(c, r, d)[0] for d in year_days]
+    free = free_days_off(c, r.plan.year)
+    kinds = [_kind(c, r, d, free)[0] for d in year_days]
     totals = {
         "faenza": sum(st.nights for st in r.stays),
         "stays": len(r.stays),
