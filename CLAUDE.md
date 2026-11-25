@@ -12,10 +12,11 @@ Claude Code skills + Google Calendar MCP for the workflow; Python 3.12 with `uv`
 Pydantic, Jinja2 for the logic and the HTML report; `pytest` and `ruff` for checks.
 No web app in the MVP.
 
-## Commands (available once task 1 in docs/spec.md lands)
+## Commands
 - `uv sync`: install dependencies
 - `uv run pytest`: run tests
 - `uv run ruff check . && uv run ruff format .`: lint and format
+- `uv run planner --help`: show commands
 - `uv run planner windows` / `uv run planner report`: plan and write out/report.html
 
 ## Owner
@@ -32,7 +33,7 @@ and say so when a better existing tool already does the job.
 
 ## Layout
 - docs/ : specs and notes (mvp.md is the source of truth for scope, spec.md for how)
-- planner/ : Python package (planned)
+- src/planner/ : Python package (CLI skeleton in place)
 - examples/ : fake data, safe to commit (planned)
 - data/, out/ : real personal data and reports, gitignored, never commit
 - .claude/skills/ : planning workflows (planned)
