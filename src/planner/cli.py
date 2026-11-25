@@ -6,6 +6,7 @@ Commands:
   scenarios compare what each possible return date means for the next stay
   report    the same as scenarios, drawn as one HTML page (out/report.html)
   routes    which flight times can work per route (search only inside these)
+  fares     live Ryanair fares per route and month, inside those windows
 """
 
 import argparse
@@ -13,6 +14,7 @@ from datetime import date
 from pathlib import Path
 
 from planner import __version__
+from planner.fares import FareError, describe, month_fares
 from planner.loaders import load_accommodation, load_constraints, load_options
 from planner.options import Option, build_options, shortlist
 from planner.report import parse_variant, render, scenario, write
@@ -115,7 +117,59 @@ def build_parser() -> argparse.ArgumentParser:
     routes.add_argument(
         "--month", help="YYYY-MM: also print Ryanair's per-day fares link for each route"
     )
+    fares = sub.add_parser(
+        "fares", help="live Ryanair fares per route and month, inside the time windows"
+    )
+    fares.add_argument("--month", required=True, help="YYYY-MM")
+    fares.add_argument(
+        "--constraints", type=Path, default=DEFAULT_CONSTRAINTS, help="constraints file"
+    )
+    fares.add_argument(
+        "--who",
+        choices=["family", "martin"],
+        default="family",
+        help="whose time window to apply (default: Paula and Basia, the stricter one)",
+    )
+    fares.add_argument(
+        "--route",
+        action="append",
+        default=[],
+        metavar="XXX-YYY",
+        help="only this route, e.g. POZ-BGY (repeatable)",
+    )
+    fares.add_argument("--refresh", action="store_true", help="ignore the cache, ask Ryanair now")
     return parser
+
+
+def _cmd_fares(args: argparse.Namespace) -> int:
+    if not args.constraints.exists():
+        print(f"No file at {args.constraints}. See examples/constraints.yaml.")
+        return 1
+    windows = route_windows(load_constraints(args.constraints).travel)
+    if args.route:
+        wanted = {r.upper() for r in args.route}
+        windows = [w for w in windows if f"{w.origin}-{w.destination}" in wanted]
+    failed = 0
+    for w in windows:
+        if args.who == "family":
+            after, by = w.family_depart_after, w.family_arrive_by
+        else:
+            after, by = w.martin_depart_after, None
+        try:
+            fares = month_fares(w.origin, w.destination, args.month, refresh=args.refresh)
+        except FareError as err:
+            failed += 1
+            print(f"{w.origin}-{w.destination} {args.month}: NOT live-checked: {err}")
+            continue
+        print("\n".join(describe(fares, after, by)))
+    if failed:
+        print(
+            f"\n{failed} route(s) could not be checked live. Do not guess: use the browser "
+            "steps in the find-flights skill for those."
+        )
+        return 2
+    print("\nCandidates only: confirm finalists on the Ryanair select page before proposing.")
+    return 0
 
 
 def _cmd_routes(args: argparse.Namespace) -> int:
@@ -271,5 +325,7 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_report(args)
     if args.command == "routes":
         return _cmd_routes(args)
+    if args.command == "fares":
+        return _cmd_fares(args)
     parser.print_help()
     return 0

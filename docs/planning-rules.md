@@ -101,7 +101,8 @@ Real values (home address, prices) live in the gitignored `data/` files.
    which departure and landing times can work, plus a Ryanair link per route
    that shows a whole month at once. Routes outside those times never need
    checking.
-4. **Flights**: run the `find-flights` skill.
+4. **Flights**: run `uv run planner fares --month YYYY-MM` for Ryanair candidates,
+   then the `find-flights` skill for the rest.
    - Open one Ryanair month page per route and keep the days that fall inside the
      time window.
    - Confirm only the finalists on the normal Ryanair booking page.
