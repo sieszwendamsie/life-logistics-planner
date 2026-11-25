@@ -109,7 +109,7 @@ Each task is one small branch and pull request, in this order.
 6. **HTML report.** Done: `planner report` writes `out/report.html`: comparison table,
    PL/IT timeline, recommendation, and the scenarios side by side
    (`--back`). Claude publishes it as a private page after each re-plan. Map links later.
-7. **Transport research skill.** A skill that searches flight and transfer options
+7. **Transport research skill.** Done: `.claude/skills/find-flights/`. A skill that searches flight and transfer options
    in the browser and records them in `data/options.yaml`.
 8. **`/plan-next-stay` skill.** Ties steps 1–6 together, including the
    "change a requirement and recalculate" loop.
