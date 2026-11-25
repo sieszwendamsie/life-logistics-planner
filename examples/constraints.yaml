@@ -118,6 +118,7 @@ year_plan:
   max_stay_nights: 21
   min_home_nights: 28        # Poznań between stays; holidays don't count
   max_home_nights: 42
+  remote_share: [0.55, 0.65]     # share of working days outside Faenza stays
   long_holiday_days: [28, 31]    # about 4 weeks around the summer shutdown
   second_holiday_days: [14, 17]  # one 2-week holiday
   holiday_gap_days: 42           # the two holidays at least 6 weeks apart

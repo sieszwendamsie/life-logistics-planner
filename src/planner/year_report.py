@@ -127,8 +127,10 @@ def assumptions(c: Constraints, r: YearResult) -> list[str]:
     p = r.plan
     notes = [
         f"Stays in Faenza last {p.min_stay_nights} to {p.max_stay_nights} nights, with "
-        f"{p.min_home_nights} to {p.max_home_nights} nights in Poznań between them "
-        "(your 2026 pattern). Holidays don't count as Poznań time.",
+        f"{p.min_home_nights} to {p.max_home_nights} nights in Poznań between them. "
+        "Holidays don't count as Poznań time. This rhythm was picked because it puts "
+        f"your remote work at {r.remote_share:.0%} of {r.workdays} working days, closest "
+        f"to the middle of your {p.remote_share[0]:.0%} to {p.remote_share[1]:.0%} target.",
         "Every stay starts and ends on a day off, so you can drive or fly without losing pay.",
         f"If La Suite is blocked during a stay, you stay alone elsewhere for at most "
         f"{c.solo_max_days} nights and Paula and Basia join when it is free.",

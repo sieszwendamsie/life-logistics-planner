@@ -193,3 +193,15 @@ def test_free_days_off_cover_long_weekends_and_shutdowns() -> None:
     assert date(2027, 12, 8) in free and date(2027, 12, 7) not in free
     assert date(2027, 1, 3) in free and date(2027, 8, 22) in free
     assert date(2027, 3, 6) not in free  # a plain weekend
+
+
+def test_rhythm_follows_remote_share() -> None:
+    r = build_year(_c(remote_share=(0.55, 0.65)), ACC)
+    assert r.workdays and 0.55 <= r.remote_share <= 0.65
+    office = sum(
+        1
+        for st in r.stays
+        for i in range(1, st.nights)
+        if not _c().day_off(st.start + __import__("datetime").timedelta(days=i))
+    )
+    assert office >= r.office_days  # holidays never fall inside a stay

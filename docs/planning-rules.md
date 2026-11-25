@@ -51,8 +51,15 @@ Real values (home address, prices) live in the gitignored `data/` files.
   - Christmas: the shutdown plus at most 2 paid days.
 
 ### Year plan (draft rhythm)
+- **Remote work 55 to 65% of working days** (Martin, 25 Nov 2026): the rest is
+  office time in Faenza. Working days leave out weekends, Italian holidays,
+  shutdowns and his holidays (`year_plan.remote_share`).
 - Stays in Faenza of 14 to 21 nights, with 28 to 42 nights in Poznań between
-  them (Martin's 2026 pattern). Holidays don't count as Poznań time.
+  them by default. If that misses the remote share, the planner tries other
+  stay and gap lengths and keeps the one closest to 60%. Holidays don't count as
+  Poznań time.
+- Later: workations (remote work from the family home or elsewhere) outside the
+  Faenza stays. Martin will give the rules for family visits.
 - Every stay starts and ends on a day off, so Martin can drive or fly without
   losing pay. No stay touches a holiday, a shutdown or a day he must be in Poland.
 - Required office periods lie fully inside a stay. Decided stays are fixed

@@ -277,6 +277,9 @@ class YearPlan(BaseModel):
     # The two big holidays should be at least this many days apart.
     holiday_gap_days: int = Field(default=42, ge=0)
     winter_extra_days: int = Field(default=2, ge=0)
+    # Share of working days Martin works remotely (outside Faenza stays). If the
+    # stay rhythm above misses it, `planner year` tries other stay and gap lengths.
+    remote_share: tuple[float, float] = (0.55, 0.65)
     # Months the two-week holiday should fall in (empty: any month), e.g. [3, 4].
     second_holiday_months: list[int] = Field(default_factory=list)
     # Pick these holidays (by start date) instead of the best-ranked ones.

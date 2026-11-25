@@ -398,10 +398,16 @@ class YearResult:
     weekends: list[Block]
     winter: list[Block]
     stays: list[Stay]
+    workdays: int = 0  # working days in the year, holidays taken out
+    office_days: int = 0  # working days inside Faenza stays
 
     @property
     def holidays(self) -> list[Block]:
         return [b for b in (self.long_pick, self.second_pick) if b]
+
+    @property
+    def remote_share(self) -> float:
+        return 1 - self.office_days / self.workdays if self.workdays else 1.0
 
     @property
     def paid_days_off(self) -> int:
@@ -412,6 +418,68 @@ def _pick(options: list[Block], start: date | None) -> Block | None:
     if start:
         return next((b for b in options if b.start == start), None)
     return options[0] if options else None
+
+
+def work_split(
+    c: Constraints, year: int, stays: list[Stay], holidays: list[Block]
+) -> tuple[int, int]:
+    """(working days in the year, of which in Faenza). Travel days are days off."""
+    first, last = date(year, 1, 1), date(year, 12, 31)
+    work = [
+        d
+        for d in _days(first, last)
+        if not c.day_off(d) and not any(b.start <= d <= b.end for b in holidays)
+    ]
+    office = [d for d in work if any(st.start < d < st.end for st in stays)]
+    return len(work), len(office)
+
+
+# Stay and gap lengths (nights) to try when the configured rhythm misses the
+# remote-work share. The configured one is always tried first.
+RHYTHMS = [
+    (14, 21, 21, 35),
+    (14, 21, 14, 28),
+    (14, 28, 21, 35),
+    (14, 28, 28, 42),
+    (21, 28, 28, 42),
+    (10, 21, 21, 35),
+    (14, 21, 35, 49),
+]
+
+
+def _plan_with_share(
+    c: Constraints, acc: AccommodationFile, plan: YearPlan, taken: list[Block]
+) -> tuple[YearPlan, list[Stay], int, int]:
+    """The rhythm (configured or tried) whose remote share is closest to the middle
+    of the target range."""
+    lo, hi = plan.remote_share
+    mid = (lo + hi) / 2
+    tries = [plan] + [
+        plan.model_copy(
+            update={
+                "min_stay_nights": a,
+                "max_stay_nights": b,
+                "min_home_nights": g,
+                "max_home_nights": h,
+            }
+        )
+        for a, b, g, h in RHYTHMS
+    ]
+    best: tuple[float, YearPlan, list[Stay], int, int] | None = None
+    for i, p in enumerate(tries):
+        stays = plan_stays(c, acc, p, taken)
+        if not stays:
+            continue
+        work, office = work_split(c, plan.year, stays, taken)
+        share = 1 - office / work if work else 1.0
+        miss = 0.0 if lo <= share <= hi else min(abs(share - lo), abs(share - hi))
+        # Aim for the middle of the range; the configured rhythm wins near-ties.
+        score = miss * 10 + abs(share - mid) + (0 if i == 0 else 0.01)
+        if best is None or score < best[0]:
+            best = (score, p, stays, work, office)
+    if best is None:
+        return plan, [], 0, 0
+    return best[1], best[2], best[3], best[4]
 
 
 def build_year(c: Constraints, acc: AccommodationFile) -> YearResult:
@@ -431,15 +499,18 @@ def build_year(c: Constraints, acc: AccommodationFile) -> YearResult:
         second_options = [*second_holidays(c, plan, long_pick, pinned=start), *second_options]
     second_pick = _pick(second_options, start)
     taken = [b for b in (long_pick, second_pick) if b]
+    rhythm, stays, work, office = _plan_with_share(c, acc, plan, taken)
     return YearResult(
-        plan=plan,
+        plan=rhythm,
         long_options=long_options,
         second_options=second_options,
         long_pick=long_pick,
         second_pick=second_pick,
         weekends=long_weekends(c, plan, taken),
         winter=winter_extras(c, plan),
-        stays=plan_stays(c, acc, plan, taken),
+        stays=stays,
+        workdays=work,
+        office_days=office,
     )
 
 
@@ -464,6 +535,12 @@ def text(c: Constraints, r: YearResult) -> str:
     out.append("Christmas shutdown, made longer:")
     out += ["    " + blk(b) for b in r.winter]
     out.append("")
+    out.append(
+        f"Remote work: {r.remote_share:.0%} of {r.workdays} working days "
+        f"(target {r.plan.remote_share[0]:.0%} to {r.plan.remote_share[1]:.0%}); "
+        f"stays {r.plan.min_stay_nights}-{r.plan.max_stay_nights} nights, "
+        f"{r.plan.min_home_nights}-{r.plan.max_home_nights} nights home between"
+    )
     out.append(f"Stays in Faenza ({len(r.stays)}):")
     for st in r.stays:
         flags = []
