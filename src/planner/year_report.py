@@ -78,7 +78,7 @@ def _blocked(st: Stay, d: date) -> bool:
     return d in st.blocked
 
 
-def _months(c: Constraints, r: YearResult) -> list[tuple[str, int, list[Cell]]]:
+def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell]]]:
     it = {h.day: h.name for h in c.holidays if h.country == "IT"}
     pl = {h.day: h.name for h in c.holidays if h.country == "PL"}
     free = free_days_off(c, r.plan.year)
@@ -104,8 +104,7 @@ def _months(c: Constraints, r: YearResult) -> list[tuple[str, int, list[Cell]]]:
                 )
             )
             d += timedelta(days=1)
-        # Blank cells before the 1st, so every column is one weekday.
-        rows.append((first.strftime("%b"), first.weekday(), cells))
+        rows.append((first.strftime("%b"), cells))
     return rows
 
 
@@ -194,7 +193,6 @@ def render_year(c: Constraints, r: YearResult) -> str:
         r=r,
         c=c,
         months=_months(c, r),
-        weekdays=[("MTWTFSS"[i % 7], i % 7 >= 5) for i in range(37)],
         totals=totals,
         long=[(_block_view(b), b == r.long_pick) for b in r.long_options],
         second=[(_block_view(b), b == r.second_pick) for b in r.second_options],
