@@ -54,6 +54,10 @@ class Constraints(BaseModel):
     office_required: list[DateRange] = Field(default_factory=list)
     poznan_required: list[DateRange] = Field(default_factory=list)
     family: list[FamilyPeriod] = Field(default_factory=list)
+    # Dates the family house in Italy can be used. Outside these dates Martin may
+    # still stay alone, but only for solo_max_days at most.
+    family_house_available: list[DateRange] = Field(default_factory=list)
+    solo_max_days: int = Field(default=7, ge=1)
 
 
 class Accommodation(BaseModel):

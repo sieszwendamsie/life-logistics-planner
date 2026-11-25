@@ -46,3 +46,9 @@ def test_family_mode_must_be_known(tmp_path: Path) -> None:
     )
     with pytest.raises(ValidationError):
         load_constraints(bad)
+
+
+def test_solo_stay_limit_defaults_to_one_week() -> None:
+    constraints = load_constraints(EXAMPLES / "constraints.yaml")
+    assert constraints.solo_max_days == 7
+    assert constraints.family_house_available[0].start == date(2027, 1, 20)
