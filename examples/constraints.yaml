@@ -3,6 +3,9 @@ horizon:
   start: 2027-01-10
   end: 2027-06-30
 
+# Last day back in Poznań after the previous stay.
+last_return: 2026-12-27
+
 stay_rules:
   min_stay_days: 21
   max_stay_days: 28

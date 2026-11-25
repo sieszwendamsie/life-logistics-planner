@@ -50,6 +50,9 @@ class Constraints(BaseModel):
     """Contents of constraints.yaml: the rules and fixed dates to plan around."""
 
     horizon: DateRange
+    # The day Martin last came back to Poznań. The next stay starts a gap after it.
+    # If unknown, the next stay may start anywhere in the horizon.
+    last_return: date | None = None
     stay_rules: StayRules
     office_required: list[DateRange] = Field(default_factory=list)
     poznan_required: list[DateRange] = Field(default_factory=list)
