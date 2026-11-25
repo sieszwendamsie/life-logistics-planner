@@ -1,0 +1,28 @@
+# Secrets and local config: never commit these
+.env
+.env.*
+!.env.example
+*.pem
+credentials*.json
+token*.json
+
+# Claude Code personal settings (the shared .claude/settings.json is fine to commit)
+.claude/settings.local.json
+
+# OS and editor clutter
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node
+node_modules/
+
+# Exports and scratch output
+/out/
+/tmp/
