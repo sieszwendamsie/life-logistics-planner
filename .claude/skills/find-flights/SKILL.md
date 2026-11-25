@@ -32,9 +32,19 @@ never enter personal or payment details, never click "Continue" past the flight 
 - 3-way trips (`onward` set): also check Italy to the UK (`onward` journey) and the
   UK to Poznań (`home` journey); UK airports Luton and Stansted.
 
+All rules in one place: `docs/planning-rules.md`.
+
 ## 1. Know what to check
 
-Run the report for the scenarios being discussed:
+First get the time limits per route (Paula and Basia's 05:00-20:00 door to door,
+Martin's earliest departure), with one Ryanair month link per route:
+
+```
+uv run planner routes --month YYYY-MM
+```
+
+Only flights inside these windows can ever be used: skip the rest. Then run the
+report for the scenarios being discussed:
 
 ```
 uv run planner scenarios --back DATE[=LABEL] ...
@@ -44,7 +54,31 @@ Each "no direct flight on your routes yet" line is an open journey: who, directi
 and day. Check the recommended option first, then the others. Do not check more
 than about 10 journeys in one go; ask Martin before doing more.
 
-## 2. Search in the browser
+## 2. Search in the browser (fast path)
+
+1. **Discover with Ryanair's month view** (Ryanair's own data, one call per route
+   per month): navigate to the link from `planner routes`, then read it with
+   `javascript_tool`:
+
+   ```js
+   JSON.parse(document.body.innerText).outbound.fares.filter(f=>!f.unavailable)
+     .map(f=>`${f.departureDate.slice(5,16)}-${f.arrivalDate.slice(11,16)} ${f.price?.value}`).join(' | ')
+   ```
+
+   It shows the cheapest flight per day, with its times. Keep the days whose
+   times fit the window. Which Italian airports an origin serves:
+   `/api/farfnd/v4/oneWayFares?departureAirportIataCode=XXX&outboundDepartureDateFrom=...&outboundDepartureDateTo=...&arrivalCountryCode=it&currency=EUR&market=en-ie`
+2. **Confirm only the finalists** on the normal Ryanair select page (below). It
+   shows every flight that day, the flight number and seats left. Record from it.
+3. **Momondo only for other airlines** (Wizz, LOT, Eurowings); Ryanair is missing
+   there. One multi-airport search covers all routes on a day:
+   `https://www.momondo.com/flight-search/POZ,WRO,WAW-BLQ,BGY,TSF,VCE/YYYY-MM-DD?fs=stops=0`
+
+Browser tips: `navigate` must be its own call; `browser_batch` cannot act on a
+page it just navigated to. Batch the actions after the page loads. Fetch calls
+from page JavaScript are blocked: navigate to the JSON URL instead.
+
+### Direct links
 
 Use the Claude in Chrome tools (Martin's own Chrome, with his OK). Open a new tab,
 and close it when done. Decline non-essential cookies.
@@ -63,10 +97,24 @@ the date: note which days have flights.
 Read the page text. Note for each direct flight: flight number, departure and
 arrival time (local), the basic fare per person, and seats-left warnings.
 
+## 2b. Ground, stays and tolls (finalists only)
+
+- Hire car (Kayak, exact airports and hours): `https://www.kayak.ie/cars/BGY/BLQ/YYYY-MM-DD-09h/YYYY-MM-DD-06h?sort=price_a`
+  (same airport twice for a return). Record `pick_up`, `drop_off`.
+- Trains: lefrecce.it. Type the station, pick the suggestion, type the date
+  (DD/MM/YYYY) in the date box, pick the hour from the time list, then Search.
+  Bergamo airport is "Orio al Serio Aeroporto" (Orio Airlink bus included).
+- Stays: `https://www.booking.com/searchresults.en-gb.html?ss=Faenza&checkin=YYYY-MM-DD&checkout=YYYY-MM-DD&group_adults=2&group_children=1&age=0&order=price&selected_currency=EUR`
+  Record under the place's `quotes:` in accommodation.yaml.
+- Italian tolls: calcolopedaggio.it/42_faenza/ (exit field, pick suggestion,
+  Calcola). A2 Poland: autostrada-a2.pl/oplaty/cennik-kategoria-1/.
+- Drive times and km: Google Maps.
+
 ## 3. Record in data/options.yaml
 
-One entry per flight found, with the price for everyone on the journey
-(per person × 2 for Paula and Basia, × 3 for everyone, × 1 for Martin):
+One entry per flight found. `price_eur` is for `seats` people (default 1, one
+adult; Basia is an infant on a lap, her fee is added from `infant_fee_eur`).
+Add `bag_eur` if the 20 kg bag price for that flight was seen:
 
 ```yaml
 - {id: ret-0302-bgy-poz, direction: return, carrier: Ryanair, origin: BGY,

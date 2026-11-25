@@ -20,6 +20,7 @@ No web app in the MVP.
 - `uv run planner windows` / `uv run planner options`: dates and full options
 - `uv run planner scenarios --back DATE[=LABEL] ...`: compare return choices
 - `uv run planner report --back ... [--variant "LABEL:solo_max_days=9"]`: scenarios as a page in out/report.html
+- `uv run planner routes --month YYYY-MM`: flight times that can work per route, with Ryanair month links
 
 ## Owner
 Martin is learning Claude Code from beginner to pro. When you add a new kind of file
@@ -37,7 +38,8 @@ and say so when a better existing tool already does the job.
 - Keep changes small; one feature per branch and pull request.
 
 ## Layout
-- docs/ : specs and notes (mvp.md is the source of truth for scope, spec.md for how)
+- docs/ : specs and notes (mvp.md is the source of truth for scope, spec.md for how,
+  planning-rules.md for every travel rule and the fastest planning steps)
 - src/planner/ : Python package (CLI skeleton in place)
 - examples/ : fake data, safe to commit (planned)
 - data/, out/ : real personal data and reports, gitignored, never commit
