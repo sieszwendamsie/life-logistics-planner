@@ -437,21 +437,22 @@ def work_split(
 # Stay and gap lengths (nights) to try when the configured rhythm misses the
 # remote-work share. The configured one is always tried first.
 RHYTHMS = [
+    (21, 28, 28, 42),
+    (21, 28, 35, 49),
+    (21, 35, 35, 56),
+    (21, 35, 42, 63),
+    (18, 28, 28, 42),
+    (14, 28, 28, 42),
     (14, 21, 21, 35),
     (14, 21, 14, 28),
-    (14, 28, 21, 35),
-    (14, 28, 28, 42),
-    (21, 28, 28, 42),
-    (10, 21, 21, 35),
-    (14, 21, 35, 49),
 ]
 
 
 def _plan_with_share(
     c: Constraints, acc: AccommodationFile, plan: YearPlan, taken: list[Block]
 ) -> tuple[YearPlan, list[Stay], int, int]:
-    """The rhythm (configured or tried) whose remote share is closest to the middle
-    of the target range."""
+    """The rhythm (configured or tried) with the remote share in range and the
+    fewest trips; if none is in range, the one closest to it."""
     lo, hi = plan.remote_share
     mid = (lo + hi) / 2
     tries = [plan] + [
@@ -465,7 +466,7 @@ def _plan_with_share(
         )
         for a, b, g, h in RHYTHMS
     ]
-    best: tuple[float, YearPlan, list[Stay], int, int] | None = None
+    best: tuple[tuple, YearPlan, list[Stay], int, int] | None = None
     for i, p in enumerate(tries):
         stays = plan_stays(c, acc, p, taken)
         if not stays:
@@ -473,8 +474,9 @@ def _plan_with_share(
         work, office = work_split(c, plan.year, stays, taken)
         share = 1 - office / work if work else 1.0
         miss = 0.0 if lo <= share <= hi else min(abs(share - lo), abs(share - hi))
-        # Aim for the middle of the range; the configured rhythm wins near-ties.
-        score = miss * 10 + abs(share - mid) + (0 if i == 0 else 0.01)
+        # Inside the range: fewest trips (Martin prefers longer stays), then the
+        # share closest to the middle; the configured rhythm wins ties.
+        score = (miss, len(stays), abs(share - mid), i)
         if best is None or score < best[0]:
             best = (score, p, stays, work, office)
     if best is None:

@@ -55,8 +55,9 @@ Real values (home address, prices) live in the gitignored `data/` files.
   office time in Faenza. Working days leave out weekends, Italian holidays,
   shutdowns and his holidays (`year_plan.remote_share`).
 - Stays in Faenza of 14 to 21 nights, with 28 to 42 nights in Poznań between
-  them by default. If that misses the remote share, the planner tries other
-  stay and gap lengths and keeps the one closest to 60%. Holidays don't count as
+  them by default. The planner also tries other stay and gap lengths and keeps
+  the one with the remote share in range and the **fewest trips**: Martin prefers
+  fewer, longer stays (3 to 4 weeks) over many 2-week ones. Holidays don't count as
   Poznań time.
 - Later: workations (remote work from the family home or elsewhere) outside the
   Faenza stays. Martin will give the rules for family visits.
