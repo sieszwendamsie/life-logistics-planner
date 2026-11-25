@@ -104,11 +104,13 @@ Each task is one small branch and pull request, in this order.
 9. **Approve to calendar.** Add the chosen plan to Google Calendar after explicit
    approval only.
 10. **Safety hook.** A hook that blocks committing files from `data/` or `out/`.
-11. **Onward trips (after the MVP).** A stay can end with a trip somewhere else
-    instead of going home. Example: fly Warsaw to Bologna, then Italy to the UK
-    to visit family, then UK straight back to Poznań. That rules out the car
-    (where to leave it, how to get it home). For now this is covered by
-    `other_travel` blocking the car. Later: let a stay's outbound or return leg
-    belong to a longer trip, and decide car or plane from the whole trip.
+11. **3-way trips.** Done: `onward` in `constraints.yaml`. A stay can end with
+    everyone flying on to a third country (for example Italy to the UK) and home
+    from there after a set number of nights. The car is never used then.
+    Example: fly Warsaw to Bologna, then Italy to the UK to visit family, then
+    the UK straight back to Poznań. Later: plan the onward trip's dates too.
+12. **Presence from the calendar.** Read who must be where from calendar tags
+    (`#PL #IT #UK #any`, `#Martin #Paula #Basia #all`, `#must #pref #flex`)
+    as part of task 4.
 
 Done when: Martin plans one real stay with it in about 15 minutes of review.
