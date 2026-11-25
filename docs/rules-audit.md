@@ -58,8 +58,6 @@ Bigger items are listed, not built.
    FlixBus, EU Oil Bulletin, calcolopedaggio.it). Not testable in the planner.
 9. **Calendar tag conventions** (`#PL`, `#Martin`, `#must`...) are handled by the
    import-calendar skill; the loader only validates the resulting YAML.
-10. **No test uses the public-holiday cons with the shutdown days** (a shutdown day
-    counts as a day off for car and flight cons, tested only through `day_off`).
 
 ## 3. Assumptions Martin should confirm
 
