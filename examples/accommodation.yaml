@@ -8,6 +8,10 @@ accommodation:
     price_per_night_eur: 90
     available:
       - {start: 2027-01-20, end: 2027-02-15}
+    # Instead of `available`, you can list only the blocked dates (like
+    # "La Suite - non disponibile" in the Travel calendar). Free otherwise.
+    # unavailable:
+    #   - {start: 2027-02-01, end: 2027-02-09}
   - name: Alternative flat (example)
     location: Faenza
     preferred: false

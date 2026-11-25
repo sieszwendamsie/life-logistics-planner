@@ -79,6 +79,18 @@ class Travel(BaseModel):
     car: CarSettings | None = None
 
 
+class OnwardTrip(BaseModel):
+    """The stay ends by flying on to a third country instead of going home.
+
+    Example: Italy to the UK to visit family for a week, then the UK straight
+    back to Poland. The car is never used on such a stay.
+    """
+
+    name: str
+    airports: list[str]  # IATA codes in the third country, e.g. LTN, STN
+    nights: int = Field(ge=1)  # nights spent there before flying home
+
+
 class Constraints(BaseModel):
     """Contents of constraints.yaml: the rules and fixed dates to plan around."""
 
@@ -96,6 +108,8 @@ class Constraints(BaseModel):
     # Other trips (holidays, business travel). The car is not used near these.
     other_travel: list[DateRange] = Field(default_factory=list)
     travel: Travel = Field(default_factory=Travel)
+    # Set this when the stay being planned continues to a third country.
+    onward: OnwardTrip | None = None
 
 
 class Accommodation(BaseModel):
@@ -104,9 +118,12 @@ class Accommodation(BaseModel):
     The preferred place is the family house: the planner only travels to its town
     when it is free.
 
-    Each range in `available` works like a booking: `start` is the first night
-    (check-in day) and `end` is the check-out day, so the night of `end` is not
-    included.
+    Each range works like a booking: `start` is the first night (check-in day) and
+    `end` is the check-out day, so the night of `end` is not included.
+
+    `available` lists when the place is free. If it is empty, the place counts as
+    free except for the `unavailable` ranges (for example "La Suite - non
+    disponibile" blocks in the Travel calendar).
     """
 
     name: str
@@ -114,6 +131,7 @@ class Accommodation(BaseModel):
     preferred: bool = False
     price_per_night_eur: float | None = Field(default=None, ge=0)
     available: list[DateRange] = Field(default_factory=list)
+    unavailable: list[DateRange] = Field(default_factory=list)
 
 
 class AccommodationFile(BaseModel):
@@ -130,7 +148,9 @@ class TransportOption(BaseModel):
     """
 
     id: str
-    direction: Literal["outbound", "return"]
+    # outbound: Poland to Italy. return: Italy to Poland.
+    # onward: Italy to a third country. home: third country to Poland.
+    direction: Literal["outbound", "return", "onward", "home"]
     carrier: str
     origin: str  # IATA airport code, e.g. POZ
     destination: str  # IATA airport code, e.g. BLQ

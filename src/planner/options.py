@@ -11,6 +11,8 @@ Rules (see docs/spec.md, steps 3 and 5):
   ("ask for an alternative route") so it can be researched.
 - Car: for long enough stays with no other travel nearby, Martin drives and the
   family flies. This is preferred when allowed.
+- 3-way trips: with `onward` set, the stay ends with everyone flying on to a
+  third country and home from there; the car is not used.
 - Ranking is about timing first, cost last.
 """
 
@@ -22,6 +24,7 @@ from planner.models import (
     Accommodation,
     AccommodationFile,
     Constraints,
+    OnwardTrip,
     OptionsFile,
     TransportOption,
     Travel,
@@ -29,7 +32,7 @@ from planner.models import (
 from planner.windows import Window
 
 Who = Literal["everyone", "Martin", "family"]
-Direction = Literal["outbound", "return"]
+Direction = Literal["outbound", "return", "onward", "home"]
 Mode = Literal["flight", "car"]
 
 
@@ -83,22 +86,58 @@ class Option:
         return max((leg.tier for leg in self.legs if leg.tier is not None), default=0)
 
 
+def _free_ranges(place: Accommodation, lo: date, hi: date) -> list[tuple[date, date]]:
+    """Free night ranges [s, e) of a place, clipped to [lo, hi)."""
+    base = [(r.start, r.end) for r in place.available] or [(lo, hi)]
+    ranges = [(max(s, lo), min(e, hi)) for s, e in base]
+    for block in place.unavailable:
+        cut: list[tuple[date, date]] = []
+        for s, e in ranges:
+            if block.end <= s or e <= block.start:
+                cut.append((s, e))
+                continue
+            if s < block.start:
+                cut.append((s, block.start))
+            if block.end < e:
+                cut.append((block.end, e))
+        ranges = cut
+    return [(s, e) for s, e in ranges if s < e]
+
+
 def _free(place: Accommodation, start: date, end: date) -> bool:
     """True if the place is free for the nights start .. end-1."""
-    return any(r.start <= start and end <= r.end for r in place.available)
+    return any(s <= start and end <= e for s, e in _free_ranges(place, start, end))
 
 
 def _house_cover(house: Accommodation, w: Window) -> tuple[date, date] | None:
-    best: tuple[date, date] | None = None
-    for r in house.available:
-        s, e = max(w.start, r.start), min(w.end, r.end)
-        if s < e and (best is None or (e - s) > (best[1] - best[0])):
-            best = (s, e)
-    return best
+    ranges = _free_ranges(house, w.start, w.end)
+    return max(ranges, key=lambda r: r[1] - r[0], default=None)
 
 
-def _tier(travel: Travel, o: TransportOption) -> int | None:
-    if not travel.route_tiers:
+def _tier(travel: Travel, o: TransportOption, onward: OnwardTrip | None) -> int | None:
+    """Route choice for a flight (1 = best), or None if it is not on Martin's routes.
+
+    For the onward and home legs of a 3-way trip, the third-country airport must be
+    one of `onward.airports`, and the Italian or Polish end is ranked like the
+    normal routes.
+    """
+    tiers = travel.route_tiers
+    if o.direction in ("onward", "home"):
+        if onward is None:
+            return None
+        third, mine = (
+            (o.destination, o.origin) if o.direction == "onward" else (o.origin, o.destination)
+        )
+        if third not in onward.airports:
+            return None
+        if not tiers:
+            return 1
+        for i, t in enumerate(tiers, start=1):
+            side = t.destinations if o.direction == "onward" else t.origins
+            if mine in side:
+                return i
+        return None
+    if not tiers:
         return 1
     home, away = (
         (o.origin, o.destination)
@@ -108,7 +147,7 @@ def _tier(travel: Travel, o: TransportOption) -> int | None:
             o.origin,
         )
     )
-    for i, t in enumerate(travel.route_tiers, start=1):
+    for i, t in enumerate(tiers, start=1):
         if home in t.origins and away in t.destinations:
             return i
     return None
@@ -120,14 +159,21 @@ def _door_hours(travel: Travel, o: TransportOption) -> float:
     return flight + th.get(o.origin, 0) + th.get(o.destination, 0)
 
 
-def _flight(transport: OptionsFile, travel: Travel, who: Who, d: Direction, day: date) -> Leg:
+def _flight(
+    transport: OptionsFile,
+    travel: Travel,
+    who: Who,
+    d: Direction,
+    day: date,
+    onward: OnwardTrip | None = None,
+) -> Leg:
     best: tuple[tuple[int, float, float], TransportOption, int, float] | None = None
     for o in transport.options:
         if o.direction != d or o.depart.date() != day:
             continue
         if travel.direct_only and o.stops:
             continue
-        tier = _tier(travel, o)
+        tier = _tier(travel, o, onward)
         if tier is None:
             continue
         hours = _door_hours(travel, o)
@@ -142,7 +188,7 @@ def _flight(transport: OptionsFile, travel: Travel, who: Who, d: Direction, day:
 
 def _car_allowed(c: Constraints, w: Window) -> bool:
     car = c.travel.car
-    if car is None or w.days < car.min_stay_days:
+    if car is None or c.onward is not None or w.days < car.min_stay_days:
         return False
     lo, hi = w.start - timedelta(days=car.clear_days), w.end + timedelta(days=car.clear_days)
     return not any(t.start <= hi and lo <= t.end for t in c.other_travel)
@@ -169,11 +215,14 @@ def _legs(
         plan = [("Martin", "outbound", w.start), ("family", "outbound", hs)]
     else:
         plan = [("everyone", "outbound", w.start)]
-    if he < w.end:
+    if c.onward is not None:
+        home_day = w.end + timedelta(days=c.onward.nights)
+        plan += [("everyone", "onward", w.end), ("everyone", "home", home_day)]
+    elif he < w.end:
         plan += [("family", "return", he), ("Martin", "return", w.end)]
     else:
         plan += [("everyone", "return", w.end)]
-    return [_flight(transport, travel, who, d, day) for who, d, day in plan]
+    return [_flight(transport, travel, who, d, day, c.onward) for who, d, day in plan]
 
 
 def build_options(
@@ -198,6 +247,13 @@ def build_options(
         solo = before + after
         if solo > c.solo_max_days:
             continue
+        if c.onward is not None:
+            # Everyone flies on together, so the family must stay until the end.
+            if after:
+                continue
+            away_end = w.end + timedelta(days=c.onward.nights)
+            if any(p.start < away_end and w.end <= p.end for p in c.poznan_required):
+                continue
 
         solo_place = None
         if solo:
@@ -235,6 +291,8 @@ def build_options(
                 if leg.choice is not None:
                     cost += leg.choice.price_eur
 
+            if c.onward is not None:
+                pros.append(f"Continues to {c.onward.name} for {c.onward.nights} nights, then home")
             if drive:
                 pros.append("Martin drives and has the car in Italy; Paula and Basia fly")
                 cons.append("Car costs (fuel, tolls) not in total")

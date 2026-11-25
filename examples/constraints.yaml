@@ -49,3 +49,11 @@ travel:
     drive_hours: 13
     min_stay_days: 21
     clear_days: 7
+
+# 3-way trip: uncomment when the stay you are planning ends by flying on to another
+# country (for example the UK) and then home from there. The car is not used then.
+# Journeys use direction: onward (Italy to UK) and direction: home (UK to Poland).
+# onward:
+#   name: UK family visit
+#   airports: [LTN, STN, LGW, LHR, BRS]
+#   nights: 7
