@@ -103,7 +103,7 @@ Each task is one small branch and pull request, in this order.
    with total cost, travel time and pros/cons. Tests.
 6. **HTML report.** `planner report` writes `out/report.html`: comparison table,
    PL/IT timeline, map links, recommendation.
-7. **Transport research skill.** A skill that searches flight and transfer options
+7. **Transport research skill.** Done: `.claude/skills/find-flights/`. A skill that searches flight and transfer options
    in the browser and records them in `data/options.yaml`.
 8. **`/plan-next-stay` skill.** Ties steps 1–6 together, including the
    "change a requirement and recalculate" loop.
