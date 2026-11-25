@@ -113,7 +113,7 @@ def test_house_not_free_at_all_drops_the_window() -> None:
 def test_missing_journey_is_a_con_not_a_drop() -> None:
     [o] = build_options(CONSTRAINTS, PLACES, JOURNEYS, [w("2027-02-02", "2027-02-20")])
     assert len(o.missing_legs) == 2
-    assert any("No outbound journey" in c for c in o.cons)
+    assert any("ask for an alternative route" in c for c in o.cons)
 
 
 def test_no_preferred_place_is_an_error() -> None:
@@ -162,3 +162,110 @@ def test_cli_options(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(args) == 0
     out = capsys.readouterr().out
     assert "Option A" in out and "Option C" in out
+
+
+TRAVEL = {
+    "direct_only": True,
+    "route_tiers": [
+        {"name": "best", "origins": ["POZ"], "destinations": ["BLQ"]},
+        {"name": "second", "origins": ["POZ"], "destinations": ["BGY"]},
+    ],
+    "transfer_hours": {"POZ": 0.5, "BLQ": 1, "BGY": 3},
+    "car": {"drive_hours": 13, "min_stay_days": 21, "clear_days": 7},
+}
+
+
+def flight(fid: str, d: str, orig: str, dest: str, day: str, stops: int = 0) -> dict:
+    return {
+        "id": fid,
+        "direction": d,
+        "carrier": "X",
+        "origin": orig,
+        "destination": dest,
+        "depart": f"{day}T08:00",
+        "arrive": f"{day}T10:00",
+        "price_eur": 50,
+        "stops": stops,
+    }
+
+
+def with_travel(**extra: object) -> Constraints:
+    data = CONSTRAINTS.model_dump(mode="json")
+    data["travel"] = TRAVEL
+    data.update(extra)
+    return Constraints.model_validate(data)
+
+
+def test_indirect_flights_are_ignored() -> None:
+    journeys = OptionsFile.model_validate(
+        {
+            "options": [
+                flight("via", "outbound", "POZ", "BLQ", "2027-02-01", stops=1),
+                flight("r", "return", "BLQ", "POZ", "2027-02-22"),
+            ]
+        }
+    )
+    c = with_travel(travel={**TRAVEL, "car": None})
+    [o] = build_options(c, PLACES, journeys, [w("2027-02-01", "2027-02-22")])
+    assert [leg.missing for leg in o.legs] == [True, False]
+
+
+def test_better_route_tier_wins_over_price() -> None:
+    cheap_far = flight("bgy", "outbound", "POZ", "BGY", "2027-02-01") | {"price_eur": 10}
+    journeys = OptionsFile.model_validate(
+        {
+            "options": [
+                cheap_far,
+                flight("blq", "outbound", "POZ", "BLQ", "2027-02-01"),
+                flight("r", "return", "BGY", "POZ", "2027-02-22"),
+            ]
+        }
+    )
+    c = with_travel(travel={**TRAVEL, "car": None})
+    [o] = build_options(c, PLACES, journeys, [w("2027-02-01", "2027-02-22")])
+    assert o.legs[0].choice.id == "blq" and o.legs[0].tier == 1
+    assert o.legs[1].tier == 2
+    assert o.legs[0].hours == 0.5 + 2 + 1
+
+
+def test_route_outside_tiers_is_missing() -> None:
+    journeys = OptionsFile.model_validate(
+        {
+            "options": [
+                flight("modlin", "outbound", "WMI", "BLQ", "2027-02-01"),
+            ]
+        }
+    )
+    c = with_travel(travel={**TRAVEL, "car": None})
+    [o] = build_options(c, PLACES, journeys, [w("2027-02-01", "2027-02-22")])
+    assert o.legs[0].missing
+
+
+def test_car_option_when_no_other_travel_nearby() -> None:
+    journeys = OptionsFile.model_validate(
+        {
+            "options": [
+                flight("f1", "outbound", "POZ", "BLQ", "2027-02-01"),
+                flight("f2", "return", "BLQ", "POZ", "2027-02-22"),
+            ]
+        }
+    )
+    built = build_options(with_travel(), PLACES, journeys, [w("2027-02-01", "2027-02-22")])
+    car = [o for o in built if o.martin_drives]
+    assert len(built) == 2 and len(car) == 1
+    assert [(leg.who, leg.mode) for leg in car[0].legs] == [
+        ("Martin", "car"),
+        ("family", "flight"),
+        ("family", "flight"),
+        ("Martin", "car"),
+    ]
+    assert car[0].martin_hours == 26
+    assert shortlist(built)[0].martin_drives
+
+
+def test_no_car_near_other_travel_or_short_stay() -> None:
+    near = with_travel(other_travel=[{"start": "2027-02-25", "end": "2027-02-26"}])
+    built = build_options(near, PLACES, JOURNEYS, [w("2027-02-01", "2027-02-22")])
+    assert not any(o.martin_drives for o in built)
+    short = build_options(with_travel(), PLACES, JOURNEYS, [w("2027-02-01", "2027-02-15")])
+    assert not any(o.martin_drives for o in short)

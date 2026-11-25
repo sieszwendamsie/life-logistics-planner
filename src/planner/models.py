@@ -46,6 +46,39 @@ class FamilyPeriod(DateRange):
     mode: Literal["together", "separately"]
 
 
+class RouteTier(BaseModel):
+    """A group of direct routes, written from Poznań's side (outbound direction).
+
+    Return flights match the same tier with origin and destination swapped.
+    Codes are IATA airport codes, such as POZ or BLQ.
+    """
+
+    name: str
+    origins: list[str]
+    destinations: list[str]
+
+
+class CarSettings(BaseModel):
+    """Martin drives Poznań to Faenza while the family flies."""
+
+    drive_hours: float = Field(default=13, gt=0)
+    # Consider the car only for stays at least this long...
+    min_stay_days: int = Field(default=21, ge=1)
+    # ...and only if no other travel plan is within this many days of the stay.
+    clear_days: int = Field(default=7, ge=0)
+
+
+class Travel(BaseModel):
+    """How Martin and the family like to travel."""
+
+    direct_only: bool = True
+    # In order of preference: the first tier is the best. Empty means any route.
+    route_tiers: list[RouteTier] = Field(default_factory=list)
+    # Hours from each airport to home (Poznań or Faenza), used for door-to-door time.
+    transfer_hours: dict[str, float] = Field(default_factory=dict)
+    car: CarSettings | None = None
+
+
 class Constraints(BaseModel):
     """Contents of constraints.yaml: the rules and fixed dates to plan around."""
 
@@ -60,6 +93,9 @@ class Constraints(BaseModel):
     # If the family house (La Suite Elena, Faenza) is not free, Martin may stay alone
     # elsewhere, but for no more than solo_max_days.
     solo_max_days: int = Field(default=7, ge=1)
+    # Other trips (holidays, business travel). The car is not used near these.
+    other_travel: list[DateRange] = Field(default_factory=list)
+    travel: Travel = Field(default_factory=Travel)
 
 
 class Accommodation(BaseModel):
@@ -90,13 +126,15 @@ class TransportOption(BaseModel):
     """One candidate journey, collected during planning.
 
     `price_eur` is what this journey costs as recorded (for everyone travelling on it).
+    `stops` is 0 for a direct flight.
     """
 
     id: str
     direction: Literal["outbound", "return"]
     carrier: str
-    origin: str
-    destination: str
+    origin: str  # IATA airport code, e.g. POZ
+    destination: str  # IATA airport code, e.g. BLQ
+    stops: int = Field(default=0, ge=0)
     depart: datetime
     arrive: datetime
     price_eur: float = Field(ge=0)

@@ -86,15 +86,28 @@ def _cmd_options(args: argparse.Namespace) -> int:
         return 1
     for label, o in zip("ABCDEFGHIJ", best, strict=False):
         w = o.window
-        mode = "family together" if o.family_together else "travel separately"
+        if o.martin_drives:
+            mode = "Martin drives, Paula and Basia fly"
+        elif o.family_together:
+            mode = "everyone flies, family together"
+        else:
+            mode = "everyone flies, travel separately"
         print(f"Option {label}: {w.start} to {w.end} ({w.days} nights), {mode}")
-        print(f"  Cost about EUR {o.total_cost_eur:.0f}, {o.travel_hours:.1f} h in transit")
+        print(
+            f"  Door to door, both ways: Martin {o.martin_hours:.1f} h, "
+            f"Paula and Basia {o.family_hours:.1f} h. About EUR {o.total_cost_eur:.0f}"
+        )
         for leg in o.legs:
-            got = (
-                f"{leg.choice.carrier} {leg.choice.id}, EUR {leg.choice.price_eur:.0f}"
-                if leg.choice
-                else "not collected yet"
-            )
+            if leg.mode == "car":
+                got = f"car, about {leg.hours:.0f} h"
+            elif leg.choice is None:
+                got = "no direct flight on your routes yet"
+            else:
+                f = leg.choice
+                got = (
+                    f"{f.carrier} {f.origin}-{f.destination} {f.depart:%H:%M}, "
+                    f"{leg.hours:.1f} h door to door, route choice {leg.tier}"
+                )
             print(f"  {leg.day} {leg.direction:<8} {leg.who:<8} {got}")
         for pro in o.pros:
             print(f"  + {pro}")
