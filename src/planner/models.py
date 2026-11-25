@@ -172,7 +172,7 @@ class Travel(BaseModel):
     # (`ground:` kind transfer). Paula can't drive Martin; no airport hotels.
     home_airports: list[str] = Field(default_factory=lambda: ["POZ"])
     leave_home_after: time = time(5, 0)  # earliest bus/train from home
-    airport_margin_hours: float = Field(default=2, ge=0)  # at the airport before take-off
+    airport_margin_hours: float = Field(default=1.5, ge=0)  # at the airport before take-off
     # Door to door: names for the ends of a journey (real places stay in data/).
     home_name: str = "home"
     italy_home_name: str = "Faenza"

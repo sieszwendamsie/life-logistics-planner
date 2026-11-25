@@ -24,6 +24,11 @@ never enter personal or payment details, never click "Continue" past the flight 
   Modlin). Stop at the first tier that has a flight on the day. Return journeys use
   the same routes reversed. If no tier has one, say "ask for an alternative route".
 - When Martin drives, he has no flight, but Paula and Basia still fly: check theirs.
+- **Public transport only from real timetables**: getting to a far airport (FlixBus,
+  PKP Intercity, DB) and trains in Italy (Trenitalia, Marconi Express) are checked
+  live for the exact day and recorded under `ground:` with depart/arrive times,
+  price, source and check date. Arrive at the airport at least 1.5 h before
+  take-off; count 0.5 h after landing. No airport hotels, no lifts from Paula.
 - 3-way trips (`onward` set): also check Italy to the UK (`onward` journey) and the
   UK to Poznań (`home` journey); UK airports Luton and Stansted.
 
