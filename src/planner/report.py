@@ -141,8 +141,7 @@ def _leg_text(leg: Leg) -> dict[str, str]:
             f"{f.carrier} {f.origin} to {f.destination}, {f.depart:%H:%M}, "
             f"{leg.hours or 0:.1f} h door to door"
         )
-        # checked_on arrives with the live-flight-data change; older files lack it.
-        status = "checked" if getattr(f, "checked_on", None) else "unchecked"
+        status = "checked" if f.checked_on else "unchecked"
     return {
         "day": f"{leg.day:%a %d %b}",
         "who": who,
