@@ -7,6 +7,7 @@ Commands:
   report    the same as scenarios, drawn as one HTML page (out/report.html)
   routes    which flight times can work per route (search only inside these)
   fares     live Ryanair fares per route and month, inside those windows
+  year      draft plan of a whole year: holiday proposals and stays in Faenza
 """
 
 import argparse
@@ -20,6 +21,7 @@ from planner.options import Option, build_options, shortlist
 from planner.report import parse_variant, render, scenario, write
 from planner.routes import route_windows, table
 from planner.windows import find_windows
+from planner.year import build_year, text
 
 DEFAULT_CONSTRAINTS = Path("data/constraints.yaml")
 DEFAULT_ACCOMMODATION = Path("data/accommodation.yaml")
@@ -138,6 +140,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="only this route, e.g. POZ-BGY (repeatable)",
     )
     fares.add_argument("--refresh", action="store_true", help="ignore the cache, ask Ryanair now")
+    year = sub.add_parser("year", help="draft plan of a whole year: holidays and stays")
+    for name, default in (
+        ("constraints", DEFAULT_CONSTRAINTS),
+        ("accommodation", DEFAULT_ACCOMMODATION),
+    ):
+        year.add_argument(
+            f"--{name}", type=Path, default=default, help=f"{name} file (default: {default})"
+        )
+    year.add_argument("--out", type=Path, help="also write the plan as an HTML page here")
     return parser
 
 
@@ -169,6 +180,24 @@ def _cmd_fares(args: argparse.Namespace) -> int:
         )
         return 2
     print("\nCandidates only: confirm finalists on the Ryanair select page before proposing.")
+    return 0
+
+
+def _cmd_year(args: argparse.Namespace) -> int:
+    for path in (args.constraints, args.accommodation):
+        if not path.exists():
+            print(f"No file at {path}. The examples/ folder has a template for each file.")
+            return 1
+    c = load_constraints(args.constraints)
+    if c.year_plan is None:
+        print("No year_plan section in the constraints. See examples/constraints.yaml.")
+        return 1
+    result = build_year(c, load_accommodation(args.accommodation))
+    print(text(c, result))
+    if args.out:
+        from planner.year_report import render_year
+
+        print(f"Wrote {write(render_year(c, result), args.out)}")
     return 0
 
 
@@ -327,5 +356,7 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_routes(args)
     if args.command == "fares":
         return _cmd_fares(args)
+    if args.command == "year":
+        return _cmd_year(args)
     parser.print_help()
     return 0
