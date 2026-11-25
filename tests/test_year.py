@@ -149,3 +149,21 @@ def test_cli_year_writes_page(tmp_path: Path) -> None:
         ]
     )
     assert code == 0 and out.exists()
+
+
+def test_preferred_poland_event_pushes_stays_away() -> None:
+    from planner.models import Presence
+
+    c = _c()
+    base = build_year(c, ACC).stays
+    second = base[1]
+    wish = Presence(
+        title="Birthday",
+        start=second.start + (second.end - second.start) / 2,
+        end=second.start + (second.end - second.start) / 2,
+        where="PL",
+        who=["Martin", "Paula", "Basia"],
+        strength="pref",
+    )
+    moved = build_year(c.model_copy(update={"presence": [wish]}), ACC).stays
+    assert all(not (st.start <= wish.start <= st.end) for st in moved)

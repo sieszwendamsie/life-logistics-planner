@@ -214,6 +214,8 @@ class Stay:
     note: str = ""
     blocked: list[date] = field(default_factory=list)  # La Suite not free these nights
     pl_holidays: list[str] = field(default_factory=list)
+    # Family events Martin would rather be in Poland for (#PL #pref).
+    pl_wishes: list[str] = field(default_factory=list)
     peak_travel: list[str] = field(default_factory=list)
     school_peak_travel: list[str] = field(default_factory=list)
     office: list[DateRange] = field(default_factory=list)
@@ -253,6 +255,12 @@ def _evaluate(
         return None
     pl = {h.day: h.name or "Polish holiday" for h in c.holidays if h.country == "PL"}
     stay.pl_holidays = [f"{pl[d]} ({d:%d %b})" for d in _days(s, e) if d in pl]
+    wishes = [
+        p for p in c.presence if "Martin" in p.who and p.where == "PL" and p.strength == "pref"
+    ]
+    stay.pl_wishes = [
+        f"{p.title or 'event'} ({p.start:%d %b})" for p in wishes if _overlaps(s, e, p)
+    ]
     peaks = peak_days(c.holidays)
     for d in (s, e):
         if d in peaks:
@@ -265,6 +273,7 @@ def _evaluate(
     stay.cost = (
         3 * stay.blocked_nights
         + 2 * len(stay.pl_holidays)
+        + 5 * len(stay.pl_wishes)
         + 2 * len(stay.peak_travel)
         + 1 * len(stay.school_peak_travel)
         + abs(stay.nights - target) / 7
@@ -459,6 +468,8 @@ def text(c: Constraints, r: YearResult) -> str:
             flags.append("office period inside")
         if st.pl_holidays:
             flags.append("Polish holiday: " + ", ".join(st.pl_holidays))
+        if st.pl_wishes:
+            flags.append("you'd rather be in Poland: " + ", ".join(st.pl_wishes))
         if st.peak_travel:
             flags.append("travel on a long weekend: " + ", ".join(st.peak_travel))
         note = f"  ({'; '.join(flags)})" if flags else ""

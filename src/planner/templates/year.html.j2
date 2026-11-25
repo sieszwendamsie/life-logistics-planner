@@ -131,10 +131,11 @@ ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
             <td>
               {% if st.fixed %}<span class="pill">fixed</span> {{ st.note }}<br>{% endif %}
               {% if st.office %}Required office days inside.<br>{% endif %}
+              {% if st.pl_wishes %}You'd rather be in Poland for: {{ st.pl_wishes | join(', ') }}.<br>{% endif %}
               {% if st.pl_holidays %}Polish holiday away from home: {{ st.pl_holidays | join(', ') }}.<br>{% endif %}
               {% if st.peak_travel %}Travel on a long weekend: {{ st.peak_travel | join(', ') }}.<br>{% endif %}
               {% if st.school_peak_travel %}Travel in school holidays: {{ st.school_peak_travel | join(', ') }}.{% endif %}
-              {% if not (st.fixed or st.office or st.pl_holidays or st.peak_travel or st.school_peak_travel) %}<span class="note">Nothing</span>{% endif %}
+              {% if not (st.fixed or st.office or st.pl_wishes or st.pl_holidays or st.peak_travel or st.school_peak_travel) %}<span class="note">Nothing</span>{% endif %}
             </td>
           </tr>
         {% endfor %}
