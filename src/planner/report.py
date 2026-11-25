@@ -44,7 +44,15 @@ def scenario(
     update: dict[str, object] = dict(changes or {})
     if back:
         update["last_return"] = back
-    c = base.model_validate({**base.model_dump(), **update}) if update else base
+    data = base.model_dump()
+    for key, value in update.items():
+        # Dotted keys reach nested settings, e.g. "travel.car" = None (no car).
+        *path, last = key.split(".")
+        node = data
+        for part in path:
+            node = node[part]
+        node[last] = value
+    c = base.model_validate(data) if update else base
     back = c.last_return
     rules = c.stay_rules
     earliest = back + timedelta(days=rules.min_gap_days) if back else None
@@ -54,13 +62,15 @@ def scenario(
 
 
 def parse_variant(text: str) -> tuple[str, dict[str, object]]:
-    """'A: drive:solo_max_days=9,min_gap_days=10' -> label and field changes."""
+    """'C: fly:solo_max_days=9,travel.car=none' -> label and field changes."""
     label, _, rest = text.rpartition(":")
     changes: dict[str, object] = {}
     for part in filter(None, (p.strip() for p in rest.split(","))):
         key, _, value = part.partition("=")
         low = value.strip().lower()
-        if low in ("true", "false"):
+        if low in ("none", "null"):
+            changes[key.strip()] = None
+        elif low in ("true", "false"):
             changes[key.strip()] = low == "true"
         elif low.lstrip("-").isdigit():
             changes[key.strip()] = int(low)

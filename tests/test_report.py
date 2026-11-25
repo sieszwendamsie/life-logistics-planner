@@ -84,3 +84,12 @@ def test_unchecked_flights_are_never_recommended() -> None:
     )
     views = build_view([scenario(c, acc, unchecked, None)], c, acc)
     assert not any(o.recommended for v in views for o in v.options)
+
+
+def test_variant_can_switch_off_the_car() -> None:
+    from planner.report import parse_variant
+
+    _, changes = parse_variant("C: fly:travel.car=none")
+    c, acc, tr = _data()
+    s = scenario(c, acc, tr, None, "C", changes=changes)
+    assert not any(o.martin_drives for o in s.options)
