@@ -67,6 +67,10 @@ class Accommodation(BaseModel):
 
     The preferred place is the family house: the planner only travels to its town
     when it is free.
+
+    Each range in `available` works like a booking: `start` is the first night
+    (check-in day) and `end` is the check-out day, so the night of `end` is not
+    included.
     """
 
     name: str
@@ -83,9 +87,13 @@ class AccommodationFile(BaseModel):
 
 
 class TransportOption(BaseModel):
-    """One candidate journey, collected during planning."""
+    """One candidate journey, collected during planning.
+
+    `price_eur` is what this journey costs as recorded (for everyone travelling on it).
+    """
 
     id: str
+    direction: Literal["outbound", "return"]
     carrier: str
     origin: str
     destination: str
