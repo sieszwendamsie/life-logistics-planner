@@ -54,6 +54,21 @@ Each "no direct flight on your routes yet" line is an open journey: who, directi
 and day. Check the recommended option first, then the others. Do not check more
 than about 10 journeys in one go; ask Martin before doing more.
 
+## 1b. Pick the fare source (generic step)
+
+Every flight check goes through one of these sources, in this order. Use the first
+that works and record which one it was in `source_url`:
+
+1. **A live-fare helper in this repo**, if one exists (look for a `planner fares`
+   command or a module under `src/planner/` that fetches Ryanair or Wizz fares;
+   `uv run planner --help` lists commands). It must return the flight number,
+   times, price and the check date, straight from the airline's own data. Use it
+   for discovery and confirmation, and still open the airline page for finalists.
+2. **The airline's own site in the browser** (section 2 below).
+3. **Momondo**, only to discover other airlines or a cheaper fare.
+
+If none can be checked live, say so and leave the journey open.
+
 ## 2. Search in the browser (fast path)
 
 1. **Discover with Ryanair's month view** (Ryanair's own data, one call per route

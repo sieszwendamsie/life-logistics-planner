@@ -1,0 +1,11 @@
+{
+  "name": "life-logistics",
+  "owner": { "name": "Martin" },
+  "plugins": [
+    {
+      "name": "life-logistics",
+      "source": "./plugin/life-logistics",
+      "description": "Stay, flight and holiday planning skills plus a test-before-commit hook"
+    }
+  ]
+}
