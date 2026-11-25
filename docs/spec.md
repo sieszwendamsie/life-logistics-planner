@@ -25,7 +25,7 @@ review loop works.
 
 | Need | Choice | Why |
 |---|---|---|
-| Conversation, orchestration | Claude Code (skills in `.claude/skills/`) | Already have it; a skill is a saved, reusable workflow |
+| Conversation, orchestration | Claude Code (skills in `plugin/life-logistics/skills/`, linked from `.claude/skills/`) | Already have it; a skill is a saved, reusable workflow |
 | Calendar read/write | Google Calendar MCP connector | Already connected; no custom OAuth code |
 | Flights, stays, transport | Web search + browser, recorded into a file | No reliable free flight API for Ryanair/Wizz; MVP only needs a few options |
 | Maps, travel time | Google Maps links (and later the Maps MCP if needed) | Zero setup |
@@ -153,7 +153,7 @@ Each task is one small branch and pull request, in this order.
    fake data in `examples/` and tests.
 3. **Date windows.** `planner windows`: generate and filter stay windows from
    the rules and hard constraints. Tests with edge cases (month ends, overlaps).
-4. **Calendar import skill.** Done: `.claude/skills/import-calendar/`. Reads the
+4. **Calendar import skill.** Done: `plugin/life-logistics/skills/import-calendar/`. Reads the
    Travel, Family, Important and Work calendars through the MCP connector and
    writes `data/constraints.yaml` and `data/accommodation.yaml`. No Python.
 5. **Option builder.** Combine windows, accommodation and transport into options
@@ -161,9 +161,9 @@ Each task is one small branch and pull request, in this order.
 6. **HTML report.** Done: `planner report` writes `out/report.html`: comparison table,
    PL/IT timeline, recommendation, and the scenarios side by side
    (`--back`). Claude publishes it as a private page after each re-plan. Map links later.
-7. **Transport research skill.** Done: `.claude/skills/find-flights/`. A skill that searches flight and transfer options
+7. **Transport research skill.** Done: `plugin/life-logistics/skills/find-flights/`. A skill that searches flight and transfer options
    in the browser and records them in `data/options.yaml`.
-8. **`/plan-next-stay` skill.** Ties steps 1–6 together, including the
+8. **`/plan-next-stay` skill.** Done. Ties steps 1–6 together, including the
    "change a requirement and recalculate" loop.
 9. **Approve to calendar.** Add the chosen plan to Google Calendar after explicit
    approval only.
@@ -182,7 +182,7 @@ Each task is one small branch and pull request, in this order.
 13. **Holidays and Work calendar.** Done: `holidays` (PL and IT), `shutdown`
     and `leave` in `constraints.yaml`, imported from the Work calendar and
     Holidays in Poland; long weekends, family flight preferences.
-14. **Holiday proposals.** The planner proposes leave dates from La Suite
+14. **Holiday proposals.** Done: `planner year` and the `plan-year` skill. The planner proposes leave dates from La Suite
     availability and PL/IT public holidays. Rules to agree with Martin first.
 
 Done when: Martin plans one real stay with it in about 15 minutes of review.
