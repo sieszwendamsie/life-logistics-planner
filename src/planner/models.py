@@ -82,6 +82,9 @@ class CarSettings(BaseModel):
     min_stay_days: int = Field(default=21, ge=1)
     # ...and only if no other travel plan is within this many days of the stay.
     clear_days: int = Field(default=7, ge=0)
+    # Martin is paid per hour, so he drives only on days he would not work:
+    # weekends, public holidays (PL or IT), shutdown and leave days.
+    days_off_only: bool = True
 
 
 class FamilyFlights(BaseModel):
@@ -158,6 +161,12 @@ class Constraints(BaseModel):
     shutdown: list[DateRange] = Field(default_factory=list)
     # Martin's own leave (#holiday). No work stay is planned over these days.
     leave: list[DateRange] = Field(default_factory=list)
+
+    def day_off(self, d: date) -> bool:
+        """True if Martin does not work that day: weekend, holiday, shutdown, leave."""
+        if d.weekday() >= 5 or any(h.day == d for h in self.holidays):
+            return True
+        return any(r.start <= d <= r.end for r in [*self.shutdown, *self.leave])
 
     def martin_away(self) -> list[DateRange]:
         """Days Martin must be outside Italy (Poznań dates, leave, #PL/#UK must events)."""

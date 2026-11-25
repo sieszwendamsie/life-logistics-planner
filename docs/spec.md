@@ -75,7 +75,8 @@ Personal data stays **out of git**. Real files live in `data/` (gitignored).
    day may move up to 4 days into the stay to get one. Avoid flying on long
    weekends in Poland or Italy (dearer), and prefer being in Poland on public
    holidays. These are soft rules: cons in the report, ranked after timing.
-   Car: for long stays with no other travel plans nearby, Martin drives
+   Car: only on days Martin does not work (weekends, public holidays,
+   shutdown, leave), because he is paid per hour. For long stays with no other travel plans nearby, Martin drives
    Poznań to Faenza and Paula and Basia fly. This is preferred when allowed.
 5. **Compare.** `planner report` combines windows, stays and transport into
    2–4 options ranked by timing first (route choice, door-to-door time per

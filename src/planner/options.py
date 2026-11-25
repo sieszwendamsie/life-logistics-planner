@@ -232,6 +232,8 @@ def _car_allowed(c: Constraints, w: Window) -> bool:
     car = c.travel.car
     if car is None or c.onward is not None or w.days < car.min_stay_days:
         return False
+    if car.days_off_only and not (c.day_off(w.start) and c.day_off(w.end)):
+        return False
     lo, hi = w.start - timedelta(days=car.clear_days), w.end + timedelta(days=car.clear_days)
     return not any(t.start <= hi and lo <= t.end for t in c.other_travel)
 

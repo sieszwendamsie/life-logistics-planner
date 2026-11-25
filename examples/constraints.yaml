@@ -49,6 +49,7 @@ travel:
     drive_hours: 13
     min_stay_days: 21
     clear_days: 7
+    days_off_only: true  # drive only on weekends, holidays, shutdown or leave days
   # Paula and Basia: weekend flights between 10:00 and 18:00 preferred. Their flight
   # day can move up to shift_days into the stay to get there. Soft rules.
   family_flights: {weekend: true, earliest: "10:00", latest: "18:00", shift_days: 4}
