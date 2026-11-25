@@ -1,0 +1,19 @@
+# Fake example data. Copy to data/ and replace with real values.
+horizon:
+  start: 2027-01-10
+  end: 2027-06-30
+
+stay_rules:
+  min_stay_days: 21
+  max_stay_days: 28
+  min_gap_days: 28
+  max_gap_days: 35
+
+office_required:
+  - {start: 2027-02-01, end: 2027-02-05}
+
+poznan_required:
+  - {start: 2027-03-15, end: 2027-03-16}
+
+family:
+  - {start: 2027-02-20, end: 2027-03-07, mode: together}

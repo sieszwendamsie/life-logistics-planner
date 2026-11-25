@@ -1,0 +1,12 @@
+# Fake example data.
+accommodation:
+  - name: Preferred apartment (example)
+    preferred: true
+    price_per_night_eur: 90
+    available:
+      - {start: 2027-01-20, end: 2027-02-15}
+  - name: Alternative flat (example)
+    preferred: false
+    price_per_night_eur: 75
+    available:
+      - {start: 2027-01-10, end: 2027-06-30}
