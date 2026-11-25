@@ -269,3 +269,8 @@ def test_no_car_near_other_travel_or_short_stay() -> None:
     assert not any(o.martin_drives for o in built)
     short = build_options(with_travel(), PLACES, JOURNEYS, [w("2027-02-01", "2027-02-15")])
     assert not any(o.martin_drives for o in short)
+
+
+def test_unchecked_flight_is_a_con() -> None:
+    [o] = build_options(CONSTRAINTS, PLACES, JOURNEYS, [w("2027-02-01", "2027-02-22")])
+    assert any("not checked live yet" in c for c in o.cons)
