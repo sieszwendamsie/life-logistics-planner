@@ -91,8 +91,9 @@ Each task is one small branch and pull request, in this order.
    fake data in `examples/` and tests.
 3. **Date windows.** `planner windows`: generate and filter stay windows from
    the rules and hard constraints. Tests with edge cases (month ends, overlaps).
-4. **Calendar import skill.** A skill that reads Google Calendar through the MCP
-   connector and writes `data/constraints.yaml`. No Python.
+4. **Calendar import skill.** Done: `.claude/skills/import-calendar/`. Reads the
+   Travel, Family, Important and Work calendars through the MCP connector and
+   writes `data/constraints.yaml` and `data/accommodation.yaml`. No Python.
 5. **Option builder.** Combine windows, accommodation and transport into options
    with total cost, travel time and pros/cons. Tests.
 6. **HTML report.** `planner report` writes `out/report.html`: comparison table,
@@ -109,8 +110,10 @@ Each task is one small branch and pull request, in this order.
     from there after a set number of nights. The car is never used then.
     Example: fly Warsaw to Bologna, then Italy to the UK to visit family, then
     the UK straight back to Poznań. Later: plan the onward trip's dates too.
-12. **Presence from the calendar.** Read who must be where from calendar tags
-    (`#PL #IT #UK #any`, `#Martin #Paula #Basia #all`, `#must #pref #flex`)
-    as part of task 4.
+12. **Presence from the calendar.** Done: `presence` in `constraints.yaml`, one
+    entry per event (`where` PL/IT/UK/any, `who` Martin/Paula/Basia, `strength`
+    must/pref/flex). Martin's #PL/#UK must days block a stay, his #IT must days
+    act like office days, Paula's or Basia's #PL/#UK must days shorten the
+    family's part of the stay, and #pref days show up as cons.
 
 Done when: Martin plans one real stay with it in about 15 minutes of review.

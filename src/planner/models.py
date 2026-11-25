@@ -46,6 +46,22 @@ class FamilyPeriod(DateRange):
     mode: Literal["together", "separately"]
 
 
+Person = Literal["Martin", "Paula", "Basia"]
+
+
+class Presence(DateRange):
+    """Someone must (or would like to) be in a place on these days, both ends included.
+
+    Usually imported from calendar tags: #PL #IT #UK #any, #Martin #Paula #Basia
+    #all, and #must #pref #flex.
+    """
+
+    title: str = ""
+    where: Literal["PL", "IT", "UK", "any"]
+    who: list[Person]
+    strength: Literal["must", "pref", "flex"] = "must"
+
+
 class RouteTier(BaseModel):
     """A group of direct routes, written from Poznań's side (outbound direction).
 
@@ -110,6 +126,36 @@ class Constraints(BaseModel):
     travel: Travel = Field(default_factory=Travel)
     # Set this when the stay being planned continues to a third country.
     onward: OnwardTrip | None = None
+    # Who must be where, per person (usually imported from the calendars).
+    presence: list[Presence] = Field(default_factory=list)
+
+    def martin_away(self) -> list[DateRange]:
+        """Days Martin must be outside Italy (Poznań dates and #PL/#UK must events)."""
+        tagged = [
+            p
+            for p in self.presence
+            if "Martin" in p.who and p.where in ("PL", "UK") and p.strength == "must"
+        ]
+        return [*self.poznan_required, *tagged]
+
+    def martin_italy(self) -> list[DateRange]:
+        """Days Martin must be in Italy (office periods and #IT must events)."""
+        tagged = [
+            p
+            for p in self.presence
+            if "Martin" in p.who and p.where == "IT" and p.strength == "must"
+        ]
+        return [*self.office_required, *tagged]
+
+    def family_away(self) -> list[DateRange]:
+        """Days Paula or Basia must be outside Italy."""
+        return [
+            p
+            for p in self.presence
+            if ({"Paula", "Basia"} & set(p.who))
+            and p.where in ("PL", "UK")
+            and p.strength == "must"
+        ]
 
 
 class Accommodation(BaseModel):

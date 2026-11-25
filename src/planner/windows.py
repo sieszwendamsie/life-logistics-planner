@@ -6,9 +6,11 @@ A window is a departure day and a return day. Its length in days is
 - it lies inside the planning horizon,
 - its length is within the stay rules,
 - it starts within the allowed gap after the last return (if known),
-- it does not overlap any date Martin must be in Poznań,
-- it does not cut through a required office period: an office period that
-  overlaps the window must lie fully inside it.
+- it does not overlap any date Martin must be in Poznań or elsewhere outside
+  Italy (`poznan_required`, and `presence` entries for Martin with #PL or #UK),
+- it does not cut through a required office period (`office_required`, and
+  #IT must entries for Martin): one that overlaps the window must lie fully
+  inside it.
 
 Accommodation is checked later, when windows become options.
 """
@@ -51,6 +53,7 @@ def find_windows(c: Constraints) -> list[Window]:
     """All feasible windows, best first: most office periods covered, then earliest."""
     earliest, latest = _start_range(c)
     rules = c.stay_rules
+    away, italy = c.martin_away(), c.martin_italy()
     found: list[Window] = []
     start = earliest
     while start <= latest:
@@ -58,9 +61,9 @@ def find_windows(c: Constraints) -> list[Window]:
             end = start + timedelta(days=length)
             if end > c.horizon.end:
                 break
-            if any(_overlaps(start, end, p) for p in c.poznan_required):
+            if any(_overlaps(start, end, p) for p in away):
                 continue
-            office = [o for o in c.office_required if _overlaps(start, end, o)]
+            office = [o for o in italy if _overlaps(start, end, o)]
             if any(not _contains(start, end, o) for o in office):
                 continue
             found.append(Window(start, end, tuple(office)))

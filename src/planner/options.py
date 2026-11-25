@@ -90,16 +90,23 @@ def _free_ranges(place: Accommodation, lo: date, hi: date) -> list[tuple[date, d
     """Free night ranges [s, e) of a place, clipped to [lo, hi)."""
     base = [(r.start, r.end) for r in place.available] or [(lo, hi)]
     ranges = [(max(s, lo), min(e, hi)) for s, e in base]
-    for block in place.unavailable:
+    return _subtract(ranges, [(b.start, b.end) for b in place.unavailable])
+
+
+def _subtract(
+    ranges: list[tuple[date, date]], blocks: list[tuple[date, date]]
+) -> list[tuple[date, date]]:
+    """Remove half-open block ranges from half-open ranges."""
+    for b_start, b_end in blocks:
         cut: list[tuple[date, date]] = []
         for s, e in ranges:
-            if block.end <= s or e <= block.start:
+            if b_end <= s or e <= b_start:
                 cut.append((s, e))
                 continue
-            if s < block.start:
-                cut.append((s, block.start))
-            if block.end < e:
-                cut.append((block.end, e))
+            if s < b_start:
+                cut.append((s, b_start))
+            if b_end < e:
+                cut.append((b_end, e))
         ranges = cut
     return [(s, e) for s, e in ranges if s < e]
 
@@ -107,11 +114,6 @@ def _free_ranges(place: Accommodation, lo: date, hi: date) -> list[tuple[date, d
 def _free(place: Accommodation, start: date, end: date) -> bool:
     """True if the place is free for the nights start .. end-1."""
     return any(s <= start and end <= e for s, e in _free_ranges(place, start, end))
-
-
-def _house_cover(house: Accommodation, w: Window) -> tuple[date, date] | None:
-    ranges = _free_ranges(house, w.start, w.end)
-    return max(ranges, key=lambda r: r[1] - r[0], default=None)
 
 
 def _tier(travel: Travel, o: TransportOption, onward: OnwardTrip | None) -> int | None:
@@ -237,12 +239,15 @@ def build_options(
     alternatives = [a for a in accommodation.accommodation if not a.preferred]
     tiers = c.travel.route_tiers
 
+    family_blocks = [(p.start, p.end + timedelta(days=1)) for p in c.family_away()]
     result: list[Option] = []
     for w in windows:
-        cover = _house_cover(house, w)
-        if cover is None:
+        house_free = _free_ranges(house, w.start, w.end)
+        # Nights the family can be at the house: house free, and nobody needed in Poland.
+        family_ranges = _subtract(house_free, family_blocks)
+        if not family_ranges:
             continue
-        hs, he = cover
+        hs, he = max(family_ranges, key=lambda r: r[1] - r[0])
         before, after = (hs - w.start).days, (w.end - he).days
         solo = before + after
         if solo > c.solo_max_days:
@@ -252,16 +257,21 @@ def build_options(
             if after:
                 continue
             away_end = w.end + timedelta(days=c.onward.nights)
-            if any(p.start < away_end and w.end <= p.end for p in c.poznan_required):
+            busy = [*c.martin_away(), *c.family_away()]
+            if any(p.start < away_end and w.end <= p.end for p in busy):
                 continue
 
+        # Martin's nights without the family: at the house when it is free, else elsewhere.
+        solo_segments = [(w.start, hs)] * bool(before) + [(he, w.end)] * bool(after)
+        elsewhere = _subtract(solo_segments, house_free)
+        elsewhere_nights = sum((e - s).days for s, e in elsewhere)
         solo_place = None
-        if solo:
-            segments = [(w.start, hs)] * bool(before) + [(he, w.end)] * bool(after)
-            places = [a for a in alternatives if all(_free(a, s, e) for s, e in segments)]
+        if elsewhere:
+            places = [a for a in alternatives if all(_free(a, s, e) for s, e in elsewhere)]
             if not places:
                 continue
             solo_place = min(places, key=_price)
+        house_nights = (he - hs).days + solo - elsewhere_nights
 
         modes = [False] + [True] * _car_allowed(c, w)
         for drive in modes:
@@ -273,12 +283,12 @@ def build_options(
             if house.price_per_night_eur is None:
                 cons.append(f"{house.name}: price per night unknown, not in total")
             else:
-                cost += (he - hs).days * house.price_per_night_eur
+                cost += house_nights * house.price_per_night_eur
             if solo_place is not None:
                 if solo_place.price_per_night_eur is None:
                     cons.append(f"{solo_place.name}: price per night unknown, not in total")
                 else:
-                    cost += solo * solo_place.price_per_night_eur
+                    cost += elsewhere_nights * solo_place.price_per_night_eur
 
             martin_h = sum(leg.hours or 0 for leg in legs if leg.who in ("Martin", "everyone"))
             family_h = sum(leg.hours or 0 for leg in legs if leg.who in ("family", "everyone"))
@@ -297,12 +307,26 @@ def build_options(
                 pros.append("Martin drives and has the car in Italy; Paula and Basia fly")
                 cons.append("Car costs (fuel, tolls) not in total")
             if solo:
-                cons.append(f"Martin alone for {solo} nights at {solo_place.name}")  # type: ignore[union-attr]
+                where = []
+                if solo - elsewhere_nights:
+                    where.append(f"{solo - elsewhere_nights} at {house.name}")
+                if solo_place is not None:
+                    where.append(f"{elsewhere_nights} at {solo_place.name}")
+                cons.append(f"Martin alone for {solo} nights ({', '.join(where)})")
             else:
                 pros.append(f"Family together at {house.name} for the whole stay")
             for fp in c.family:
                 if fp.mode == "together" and fp.start < w.end and w.start <= fp.end and solo:
                     cons.append(f"Family wanted to travel together {fp.start} to {fp.end}")
+            for p in c.presence:
+                if p.strength != "pref" or p.where in ("IT", "any"):
+                    continue
+                martin_misses = "Martin" in p.who and p.start < w.end and w.start <= p.end
+                family_misses = (
+                    bool({"Paula", "Basia"} & set(p.who)) and p.start < he and hs <= p.end
+                )
+                if martin_misses or family_misses:
+                    cons.append(f"Misses '{p.title or 'preferred event'}' on {p.start}")
             if w.office_covered:
                 pros.append(f"Covers {len(w.office_covered)} required office period(s)")
             used = {leg.tier for leg in legs if leg.tier is not None}
