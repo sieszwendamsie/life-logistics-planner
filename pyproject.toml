@@ -1,0 +1,30 @@
+[project]
+name = "life-logistics-planner"
+version = "0.1.0"
+description = "Personal planner for stays, office days and travel between Poznań and Italy"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+planner = "planner.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.8,<0.12"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.uv.build-backend]
+module-name = "planner"
+module-root = "src"
