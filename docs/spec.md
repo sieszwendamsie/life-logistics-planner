@@ -53,8 +53,10 @@ Personal data stays **out of git**. Real files live in `data/` (gitignored).
    horizon and update `data/constraints.yaml`. Ask Martin about anything unclear.
 2. **Generate date windows.** `planner windows` lists feasible stay windows
    that satisfy the stay rules and hard constraints.
-3. **Check accommodation** for each window; if the preferred apartment is not
-   free, propose the "Martin first, family later" variant.
+3. **Check accommodation** for each window. Always prefer the family house
+   (La Suite Elena, Faenza): the family only travels when it is free. If it is
+   not free, plan around it; Martin may stay alone in another place for at most
+   `solo_max_days` (default 7).
 4. **Collect transport options** for the best 3–5 windows (Momondo, Ryanair,
    Wizz, others) into `data/options.yaml`. Read only. Never book.
 5. **Compare.** `planner report` combines windows, stays and transport into
