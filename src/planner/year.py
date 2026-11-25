@@ -516,6 +516,45 @@ def build_year(c: Constraints, acc: AccommodationFile) -> YearResult:
     )
 
 
+def check_year(c: Constraints, r: YearResult) -> list[str]:
+    """Problems where the plan breaks one of Martin's yearly rules (empty if none)."""
+    plan, out = r.plan, []
+    shut = _summer_shutdown(c, plan.year)
+    lo_d, hi_d = plan.long_holiday_days
+    if r.long_pick is None:
+        out.append("No long holiday found around the summer shutdown.")
+    else:
+        b = r.long_pick
+        if not lo_d <= b.days <= hi_d:
+            out.append(f"Long holiday is {b.days} days, rule is {lo_d}-{hi_d}.")
+        if shut and not (b.start <= shut.start and shut.end <= b.end):
+            out.append("Long holiday does not cover the summer shutdown.")
+    lo_d, hi_d = plan.second_holiday_days
+    if r.second_pick is None:
+        out.append("No second (two-week) holiday found.")
+    else:
+        b = r.second_pick
+        if not lo_d <= b.days <= hi_d:
+            out.append(f"Second holiday is {b.days} days, rule is {lo_d}-{hi_d}.")
+        if plan.second_holiday_months and b.start.month not in plan.second_holiday_months:
+            months = ", ".join(str(m) for m in plan.second_holiday_months)
+            out.append(f"Second holiday starts in month {b.start.month}, rule is month {months}.")
+    for b in r.winter:
+        if b.paid_days > plan.winter_extra_days:
+            out.append(
+                f"Winter shutdown extended by {b.paid_days} paid days, max is "
+                f"{plan.winter_extra_days}."
+            )
+    lo, hi = plan.remote_share
+    if r.stays and not lo <= r.remote_share <= hi:
+        out.append(f"Remote share is {r.remote_share:.0%}, target {lo:.0%}-{hi:.0%}.")
+    for st in r.stays:
+        for b in r.holidays:
+            if st.start <= b.end and b.start <= st.end:
+                out.append(f"Stay {st.start:%d %b}-{st.end:%d %b} overlaps a holiday.")
+    return out
+
+
 def text(c: Constraints, r: YearResult) -> str:
     """The plan as plain text for the terminal."""
 
@@ -562,4 +601,8 @@ def text(c: Constraints, r: YearResult) -> str:
         out.append(f"  {st.start:%a %d %b} to {st.end:%a %d %b}: {st.nights} nights{note}")
     if not r.stays:
         out.append("  No chain of stays fits. Loosen min/max_home_nights or the stay length.")
+    problems = check_year(c, r)
+    out.append("")
+    out.append("Rule check: " + ("all yearly rules met." if not problems else ""))
+    out += [f"  ! {p}" for p in problems]
     return "\n".join(out)

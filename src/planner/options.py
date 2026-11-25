@@ -693,6 +693,8 @@ def _soft_cons(
     fam_end: date,
     peaks: dict[date, LongWeekend],
     cons: list[str],
+    house_start: date,
+    house_end: date,
 ) -> int:
     """Add a con for each soft preference the option breaks; return how many."""
     before = len(cons)
@@ -710,6 +712,14 @@ def _soft_cons(
                 cons.append(
                     f"Paula and Basia's flight leaves at {leg.choice.depart:%H:%M}, "
                     f"outside {window}"
+                )
+        if leg.who == "family":
+            wanted = house_start if leg.direction == "outbound" else house_end
+            early_bridge = leg.direction == "outbound" and leg.day < wanted
+            if leg.day != wanted and not early_bridge:
+                cons.append(
+                    f"Paula and Basia's {leg.direction} moves from {wanted:%a %d %b} to "
+                    f"{leg.day:%a %d %b}: you'd rather not shift their date"
                 )
         if leg.who in ("Martin", "everyone") and not c.day_off(leg.day):
             cons.append(f"Martin flies on a working day ({leg.day:%a %d %b}): unpaid hours")
@@ -921,7 +931,7 @@ def build_options(
             fam_back = next(
                 (g.day for g in legs if g.who == "family" and g.direction == "return"), he
             )
-            soft = _soft_cons(c, legs, w, fam_out, fam_back, peaks, cons)
+            soft = _soft_cons(c, legs, w, fam_out, fam_back, peaks, cons, hs, he)
             if not drive and c.onward is None:
                 for g, label in _ground(c, transport, legs, w, fam_out, fam_back):
                     if g is None:
