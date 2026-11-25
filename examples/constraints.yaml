@@ -23,3 +23,29 @@ family:
 
 # If the family house is not free, Martin can stay alone elsewhere for up to this many days.
 solo_max_days: 7
+
+# Other trips (holidays, business travel). The car is not used near these.
+other_travel:
+  - {start: 2027-02-25, end: 2027-02-27}
+
+travel:
+  direct_only: true
+  # Best first. Written from Poznań's side; return flights use the same routes reversed.
+  route_tiers:
+    - name: Poznań to Bologna, Rimini or Forlì
+      origins: [POZ]
+      destinations: [BLQ, RMI, FRL]
+    - name: Poznań to another airport in northern or central Italy
+      origins: [POZ]
+      destinations: [TSF, VCE, VRN, BGY, FLR, PSA]
+    - name: Wrocław, Warsaw Chopin or Berlin to Bologna
+      origins: [WRO, WAW, BER]
+      destinations: [BLQ]
+  # Hours between each airport and home (Poznań or Faenza). Rough example values.
+  transfer_hours:
+    {POZ: 0.5, WRO: 2.5, WAW: 3.5, BER: 3, BLQ: 1, RMI: 1, FRL: 0.5,
+     TSF: 2.5, VCE: 2.5, VRN: 2.5, BGY: 3, FLR: 1.5, PSA: 2.5}
+  car:
+    drive_hours: 13
+    min_stay_days: 21
+    clear_days: 7

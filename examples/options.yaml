@@ -1,18 +1,21 @@
-# Fake example data. Times are local. outbound = Poznań to Italy, return = Italy to Poznań.
+# Fake example data. Times are local. outbound = towards Italy, return = towards Poland.
+# origin and destination are IATA airport codes. stops: 0 means direct.
 # price_eur is the price of the journey for everyone on it.
 options:
-  - {id: out-0124, direction: outbound, carrier: Ryanair, origin: Poznań (POZ), destination: Bergamo (BGY),
+  - {id: out-0124, direction: outbound, carrier: Ryanair, origin: POZ, destination: BGY,
      depart: 2027-01-24T06:10:00, arrive: 2027-01-24T08:35:00, price_eur: 62.5,
      source_url: https://example.com/search/1}
-  - {id: out-0127, direction: outbound, carrier: Ryanair, origin: Poznań (POZ), destination: Bologna (BLQ),
-     depart: 2027-01-27T09:00:00, arrive: 2027-01-27T11:10:00, price_eur: 48}
-  - {id: out-0131, direction: outbound, carrier: Wizz Air, origin: Poznań (POZ), destination: Bologna (BLQ),
-     depart: 2027-01-31T14:20:00, arrive: 2027-01-31T16:30:00, price_eur: 39}
-  - {id: ret-0214, direction: return, carrier: Ryanair, origin: Bergamo (BGY), destination: Poznań (POZ),
+  - {id: out-0124-via-waw, direction: outbound, carrier: LOT, origin: POZ, destination: BLQ,
+     stops: 1, depart: 2027-01-24T07:00:00, arrive: 2027-01-24T12:40:00, price_eur: 45}
+  - {id: out-0127, direction: outbound, carrier: Ryanair, origin: POZ, destination: TSF,
+     depart: 2027-01-27T09:00:00, arrive: 2027-01-27T11:00:00, price_eur: 48}
+  - {id: out-0131, direction: outbound, carrier: Ryanair, origin: WRO, destination: BLQ,
+     depart: 2027-01-31T14:20:00, arrive: 2027-01-31T16:20:00, price_eur: 39}
+  - {id: ret-0214, direction: return, carrier: Ryanair, origin: BGY, destination: POZ,
      depart: 2027-02-14T09:15:00, arrive: 2027-02-14T11:30:00, price_eur: 70}
-  - {id: ret-0215, direction: return, carrier: Ryanair, origin: Bologna (BLQ), destination: Poznań (POZ),
-     depart: 2027-02-15T12:00:00, arrive: 2027-02-15T14:10:00, price_eur: 55}
-  - {id: ret-0217, direction: return, carrier: Ryanair, origin: Bologna (BLQ), destination: Poznań (POZ),
-     depart: 2027-02-17T12:00:00, arrive: 2027-02-17T14:10:00, price_eur: 44}
-  - {id: ret-0221, direction: return, carrier: Ryanair, origin: Bologna (BLQ), destination: Poznań (POZ),
-     depart: 2027-02-21T12:00:00, arrive: 2027-02-21T14:10:00, price_eur: 41}
+  - {id: ret-0215, direction: return, carrier: Ryanair, origin: BLQ, destination: WRO,
+     depart: 2027-02-15T12:00:00, arrive: 2027-02-15T14:00:00, price_eur: 55}
+  - {id: ret-0217, direction: return, carrier: Ryanair, origin: TSF, destination: POZ,
+     depart: 2027-02-17T12:00:00, arrive: 2027-02-17T14:00:00, price_eur: 44}
+  - {id: ret-0221, direction: return, carrier: Ryanair, origin: BGY, destination: POZ,
+     depart: 2027-02-21T12:00:00, arrive: 2027-02-21T14:15:00, price_eur: 41}

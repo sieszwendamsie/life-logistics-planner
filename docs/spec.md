@@ -59,8 +59,17 @@ Personal data stays **out of git**. Real files live in `data/` (gitignored).
    `solo_max_days` (default 7).
 4. **Collect transport options** for the best 3–5 windows (Momondo, Ryanair,
    Wizz, others) into `data/options.yaml`. Read only. Never book.
+   Direct flights only, searched in this order (`travel.route_tiers`):
+   1. Poznań to Bologna, Rimini or Forlì.
+   2. Poznań to another nearby Italian airport (Treviso, Venice, Verona,
+      Bergamo, Florence, ...).
+   3. Wrocław, Warsaw Chopin or Berlin (not Modlin) to Bologna.
+   4. If none of these exist, ask Claude for an alternative route.
+   Car: for long stays with no other travel plans nearby, Martin drives
+   Poznań to Faenza and Paula and Basia fly. This is preferred when allowed.
 5. **Compare.** `planner report` combines windows, stays and transport into
-   2–4 options with total cost, door-to-door time, pros/cons and a recommendation,
+   2–4 options ranked by timing first (route choice, door-to-door time per
+   person), cost last, with pros/cons and a recommendation,
    and writes `out/report.html` (timeline PL/IT, comparison table, map links).
 6. **Iterate.** Martin says e.g. "two more days in Poznań"; Claude updates the
    data and re-runs steps 2–5.
@@ -95,5 +104,11 @@ Each task is one small branch and pull request, in this order.
 9. **Approve to calendar.** Add the chosen plan to Google Calendar after explicit
    approval only.
 10. **Safety hook.** A hook that blocks committing files from `data/` or `out/`.
+11. **Onward trips (after the MVP).** A stay can end with a trip somewhere else
+    instead of going home. Example: fly Warsaw to Bologna, then Italy to the UK
+    to visit family, then UK straight back to Poznań. That rules out the car
+    (where to leave it, how to get it home). For now this is covered by
+    `other_travel` blocking the car. Later: let a stay's outbound or return leg
+    belong to a longer trip, and decide car or plane from the whole trip.
 
 Done when: Martin plans one real stay with it in about 15 minutes of review.
