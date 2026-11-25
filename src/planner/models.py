@@ -137,6 +137,23 @@ class FamilyFlights(BaseModel):
     shift_days: int = Field(default=4, ge=0)
 
 
+class Ride(BaseModel):
+    """Taxi (Bolt, Uber) between home and a nearby airport: one ride, any people."""
+
+    hours: float = Field(gt=0)
+    price_eur: float = Field(ge=0)
+    note: str = ""
+
+
+class ItalyDrive(BaseModel):
+    """Driving between an Italian airport and Faenza (own car or hire car)."""
+
+    km: float = Field(gt=0)
+    hours: float = Field(gt=0)
+    toll_eur: float = Field(ge=0)  # one way
+    note: str = ""
+
+
 class Travel(BaseModel):
     """How Martin and the family like to travel."""
 
@@ -156,6 +173,21 @@ class Travel(BaseModel):
     home_airports: list[str] = Field(default_factory=lambda: ["POZ"])
     leave_home_after: time = time(5, 0)  # earliest bus/train from home
     airport_margin_hours: float = Field(default=2, ge=0)  # at the airport before take-off
+    # Door to door: names for the ends of a journey (real places stay in data/).
+    home_name: str = "home"
+    italy_home_name: str = "Faenza"
+    office_name: str = "the office"
+    # Arriving on a working day by this time, Martin goes straight to the office.
+    office_if_arriving_by: time = time(12, 0)
+    # Taxi between home and a nearby airport (e.g. POZ), per ride.
+    home_rides: dict[str, Ride] = Field(default_factory=dict)
+    # Drives between Italian airports and Faenza (Google Maps time, toll one way).
+    italy_drives: dict[str, ItalyDrive] = Field(default_factory=dict)
+    italy_fuel_eur_per_l: float = Field(default=2.22, gt=0)
+    # From landing to leaving the airport (bags, hire-car desk).
+    arrival_buffer_hours: float = Field(default=0.5, ge=0)
+    # From Faenza station to the house, when arriving by train.
+    station_to_home_hours: float = Field(default=0.4, ge=0)
     family_flights: FamilyFlights = Field(default_factory=FamilyFlights)
     # Try not to fly on long weekends (prices are higher). Soft rule.
     avoid_long_weekends: bool = True

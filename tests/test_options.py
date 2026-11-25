@@ -94,7 +94,7 @@ def test_whole_stay_in_house_is_family_together_with_cheapest_flights() -> None:
     assert o.family_together
     assert [leg.choice.id for leg in o.legs if leg.choice] == ["o1", "r1"]
     assert o.total_cost_eur == 21 * 100 + 3 * (40 + 60)  # price per person x 3
-    assert o.travel_hours == 4
+    assert o.travel_hours == 9  # each way: 2 h at the airport, 2 h flight, 0.5 h after
 
 
 def test_house_free_later_means_martin_goes_first_alone() -> None:
@@ -232,7 +232,7 @@ def test_better_route_tier_wins_over_price() -> None:
     [o] = build_options(c, PLACES, journeys, [w("2027-02-01", "2027-02-22")])
     assert o.legs[0].choice.id == "blq" and o.legs[0].tier == 1
     assert o.legs[1].tier == 2
-    assert o.legs[0].hours == 0.5 + 2 + 1
+    assert o.legs[0].hours == 0.5 + 2 + 2 + 0.5 + 1  # home, airport wait, flight, bags, home
 
 
 def test_route_outside_tiers_is_missing() -> None:
@@ -403,4 +403,4 @@ def test_far_airport_needs_a_checked_bus_or_train() -> None:
     ok = {"options": [out, back], "ground": [bus("c", "06:00", "09:20")]}
     [o] = build_options(c, PLACES, OptionsFile.model_validate(ok), win)
     assert o.legs[0].transfer.id == "c"
-    assert o.legs[0].hours == 9.5 + 1  # 06:00 to 15:30, plus BLQ to home
+    assert o.legs[0].hours == 9.5 + 0.5 + 1  # bus 06:00 to landing 15:30, bags, BLQ to home

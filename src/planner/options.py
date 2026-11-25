@@ -17,7 +17,7 @@ Rules (see docs/spec.md, steps 3 and 5):
 """
 
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal
 
 from planner.costs import round_trip
@@ -66,6 +66,21 @@ class Leg:
 
 
 @dataclass
+class Journey:
+    """One person's (or group's) trip from door to door."""
+
+    who: Who
+    direction: Direction
+    day: date
+    start: str  # e.g. "home"
+    end: str  # e.g. "Faenza" or "the office"
+    leave: datetime | None = None
+    arrive: datetime | None = None
+    hours: float | None = None
+    how: str = ""  # e.g. "taxi, Ryanair FR 3594 POZ-BGY, hire car"
+
+
+@dataclass
 class Option:
     window: Window
     house: Accommodation
@@ -88,6 +103,10 @@ class Option:
     soft: int = 0
     # Hire cars or trains this option needs whose price was not checked live.
     open_ground: int = 0
+    # Cost by kind (flights, car hire, driving, taxis, trains and buses...).
+    costs: dict[str, float] = field(default_factory=dict)
+    # Door to door, per journey: from home to Faenza (or the office) and back.
+    journeys: list["Journey"] = field(default_factory=list)
 
     @property
     def family_together(self) -> bool:
@@ -397,6 +416,140 @@ def _ground(
     return found
 
 
+def _uses_train(c: Constraints, leg: Leg) -> bool:
+    """Martin alone, flying into a train airport (when he has no car with him)."""
+    if leg.who != "Martin" or leg.choice is None or leg.mode != "flight":
+        return False
+    port = leg.choice.destination if leg.direction == "outbound" else leg.choice.origin
+    return port in c.travel.train_airports
+
+
+def _journey(c: Constraints, transport: OptionsFile, leg: Leg) -> Journey:
+    """Door to door for one leg: Polish side, flight, Italian side."""
+    t = c.travel
+    out = leg.direction == "outbound"
+    home, italy = t.home_name, t.italy_home_name
+    start, end = (home, italy) if out else (italy, home)
+    if leg.mode == "car":
+        hours = t.car.drive_hours if t.car else None
+        return Journey(leg.who, leg.direction, leg.day, start, end, hours=hours, how="own car")
+    o = leg.choice
+    if o is None:
+        return Journey(leg.who, leg.direction, leg.day, start, end, how="flight to find")
+    pl_port, it_port = (o.origin, o.destination) if out else (o.destination, o.origin)
+    margin = timedelta(hours=t.airport_margin_hours)
+    how: list[str] = []
+    # Polish side.
+    ride = t.home_rides.get(pl_port)
+    pl_leave = pl_arrive = None
+    if leg.transfer is not None and leg.transfer.depart and leg.transfer.arrive:
+        how.append(leg.transfer.detail.split(" ")[0] or "bus")
+        pl_leave, pl_arrive = leg.transfer.depart, leg.transfer.arrive
+    elif ride is not None:
+        how.append("taxi")
+        if out:
+            pl_leave = o.depart - margin - timedelta(hours=ride.hours)
+        else:
+            pl_arrive = o.arrive + timedelta(hours=t.arrival_buffer_hours + ride.hours)
+    else:
+        h = timedelta(hours=t.transfer_hours.get(pl_port, 0))
+        pl_leave = o.depart - margin - h if out else None
+        pl_arrive = None if out else o.arrive + timedelta(hours=t.arrival_buffer_hours) + h
+    how.append(f"{o.carrier} {o.origin}-{o.destination}")
+    # Italian side.
+    drive = t.italy_drives.get(it_port)
+    train = None
+    if _uses_train(c, leg):
+        train = next(
+            (
+                g
+                for g in transport.ground
+                if g.kind == "train" and g.start == leg.day and g.depart and g.arrive
+            ),
+            None,
+        )
+    it_leave = it_arrive = None
+    if train is not None:
+        how.append("train")
+        if out:
+            it_arrive = train.arrive + timedelta(hours=t.station_to_home_hours)
+        else:
+            it_leave = train.depart - timedelta(hours=t.station_to_home_hours)
+    elif drive is not None:
+        how.append("car")
+        if out:
+            it_arrive = o.arrive + timedelta(hours=t.arrival_buffer_hours + drive.hours)
+        else:
+            it_leave = o.depart - margin - timedelta(hours=drive.hours)
+    else:
+        h = timedelta(hours=t.transfer_hours.get(it_port, 0))
+        if out:
+            it_arrive = o.arrive + timedelta(hours=t.arrival_buffer_hours) + h
+        else:
+            it_leave = o.depart - margin - h
+    leave, arrive = (pl_leave, it_arrive) if out else (it_leave, pl_arrive)
+    if out and leg.who in ("Martin", "everyone") and arrive is not None:
+        working = not c.day_off(arrive.date())
+        if working and arrive.time() <= t.office_if_arriving_by:
+            end = t.office_name
+    hours = (arrive - leave).total_seconds() / 3600 if leave and arrive else None
+    return Journey(
+        leg.who,
+        leg.direction,
+        leg.day,
+        start,
+        end,
+        leave,
+        arrive,
+        round(hours, 2) if hours is not None else None,
+        ", ".join(how),
+    )
+
+
+def _extras(
+    c: Constraints, legs: list[Leg], w: Window, drive: bool
+) -> tuple[float, float, list[str]]:
+    """Taxis to Polish airports and drives between Italian airports and Faenza.
+
+    Returns (taxi cost, driving cost, notes). Martin drives to fetch Paula and
+    Basia and back (two drives), or one drive when he travels himself or leaves
+    Italy that day.
+    """
+    t = c.travel
+    taxis = driving = 0.0
+    notes: list[str] = []
+    l_per_km = t.car.costs.l_per_100km / 100 if t.car else 0.06
+    martin_out = next((g for g in legs if g.who == "Martin" and g.direction == "outbound"), None)
+    has_car_early = drive or not (martin_out and _uses_train(c, martin_out))
+    count: dict[str, int] = {}
+    for leg in legs:
+        o = leg.choice
+        if leg.mode != "flight" or o is None:
+            continue
+        out = leg.direction == "outbound"
+        pl_port, it_port = (o.origin, o.destination) if out else (o.destination, o.origin)
+        if leg.transfer is None and pl_port in t.home_rides:
+            taxis += t.home_rides[pl_port].price_eur
+        if it_port not in t.italy_drives or _uses_train(c, leg):
+            continue
+        if leg.who != "family":
+            n = 1
+        elif out:
+            n = 2 if has_car_early else 1
+        else:
+            n = 1 if (leg.day == w.end or not has_car_early) else 2
+        count[it_port] = count.get(it_port, 0) + n
+    for port, n in count.items():
+        d = t.italy_drives[port]
+        fuel = d.km * l_per_km * t.italy_fuel_eur_per_l
+        driving += n * (d.toll_eur + fuel)
+        notes.append(
+            f"{n} drive(s) {port} to or from Faenza: €{n * (d.toll_eur + fuel):.0f} "
+            f"(toll €{d.toll_eur:.2f} + fuel €{fuel:.0f} each, {d.km:.0f} km)"
+        )
+    return round(taxis, 2), round(driving, 2), notes
+
+
 def _days(start: date, end: date) -> list[date]:
     return [start + timedelta(days=i) for i in range((end - start).days)]
 
@@ -500,20 +653,22 @@ def build_options(
             pros: list[str] = []
             cons: list[str] = []
 
-            cost = 0.0
+            costs: dict[str, float] = {}
+
+            def add(kind: str, eur: float, costs: dict[str, float] = costs) -> None:
+                costs[kind] = round(costs.get(kind, 0) + eur, 2)
+
             if house.price_per_night_eur is None:
                 cons.append(f"{house.name}: price per night unknown, not in total")
             else:
-                cost += house_nights * house.price_per_night_eur
+                add("Accommodation", house_nights * house.price_per_night_eur)
             if solo_place is not None:
                 if solo_place.price_per_night_eur is None:
                     cons.append(f"{solo_place.name}: price per night unknown, not in total")
                 else:
-                    cost += elsewhere_nights * solo_place.price_per_night_eur
+                    add("Accommodation", elsewhere_nights * solo_place.price_per_night_eur)
 
             open_ground = 0
-            martin_h = sum(leg.hours or 0 for leg in legs if leg.who in ("Martin", "everyone"))
-            family_h = sum(leg.hours or 0 for leg in legs if leg.who in ("family", "everyone"))
             for leg in legs:
                 if leg.missing:
                     cons.append(
@@ -522,7 +677,7 @@ def build_options(
                     )
                 if leg.transfer is not None:
                     t = leg.transfer
-                    cost += t.price_eur * leg.people
+                    add("Trains and buses", t.price_eur * leg.people)
                     cons.append(
                         f"{leg.who}: {t.detail} ({t.depart:%H:%M} to {t.arrive:%H:%M}, "
                         f"€{t.price_eur * leg.people:.0f}, checked {t.checked_on:%d %b}; in total)"
@@ -538,7 +693,7 @@ def build_options(
                         f"{c.travel.airport_margin_hours:g} h before the flight"
                     )
                 if leg.choice is not None:
-                    cost += leg.choice.price_eur / leg.choice.seats * leg.people
+                    add("Flights", leg.choice.price_eur / leg.choice.seats * leg.people)
                     if leg.choice.checked_on is None:
                         cons.append(
                             f"{leg.choice.carrier} {leg.choice.id} on {leg.day} not checked "
@@ -551,8 +706,8 @@ def build_options(
             if drive and car is not None:
                 pros.append("Martin drives and has the car in Italy; Paula and Basia fly")
                 drive_cost = round_trip(car.costs, w.start, w.end)
-                cost += drive_cost.total_eur
-                cons.append(drive_cost.text() + " (assumed prices, in total)")
+                add("Own car: fuel, tolls, vignettes", drive_cost.total_eur)
+                cons.append(drive_cost.text() + " (in total)")
             if solo:
                 where = []
                 if solo - elsewhere_nights:
@@ -589,7 +744,7 @@ def build_options(
                         open_ground += 1
                         cons.append(f"{label}: price not checked live yet")
                     else:
-                        cost += g.price_eur
+                        add("Car hire" if g.kind == "car_hire" else "Trains and buses", g.price_eur)
                         cons.append(
                             f"{label}: €{g.price_eur:.0f} ({g.detail}, checked "
                             f"{g.checked_on:%d %b}; in total)"
@@ -611,6 +766,19 @@ def build_options(
                 if tiers and t <= len(tiers):
                     cons.append(f"Uses route choice {t}: {tiers[t - 1].name}")
 
+            journeys = [_journey(c, transport, leg) for leg in legs]
+            for leg, j in zip(legs, journeys, strict=True):
+                if j.hours is not None:
+                    leg.hours = j.hours
+            martin_h = sum(g.hours or 0 for g in legs if g.who in ("Martin", "everyone"))
+            family_h = sum(g.hours or 0 for g in legs if g.who in ("family", "everyone"))
+            taxis, driving, notes = _extras(c, legs, w, drive)
+            if taxis:
+                add("Taxis to and from airports", taxis)
+            if driving:
+                add("Driving in Italy: tolls, fuel", driving)
+            cons.extend(f"{n} (in total)" for n in notes)
+
             result.append(
                 Option(
                     w,
@@ -621,7 +789,7 @@ def build_options(
                     solo,
                     drive,
                     legs,
-                    round(cost, 2),
+                    round(sum(costs.values()), 2),
                     round(martin_h, 2),
                     round(family_h, 2),
                     pros,
@@ -630,6 +798,8 @@ def build_options(
                     family_end=fam_back,
                     soft=soft,
                     open_ground=open_ground,
+                    costs=costs,
+                    journeys=journeys,
                 )
             )
     return result

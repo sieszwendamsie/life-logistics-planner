@@ -66,6 +66,15 @@ travel:
   # home (`ground:` kind transfer in options.yaml), leaving after 05:00 and arriving
   # 2 h before the flight. No lifts, no airport hotels.
   home_airports: [POZ]
+  # Door to door: names for the ends of each journey, taxi to the home airport,
+  # and drives from Italian airports (Google Maps time, toll one way).
+  home_name: home
+  italy_home_name: Faenza
+  office_name: the office
+  home_rides:
+    POZ: {hours: 0.33, price_eur: 14, note: "taxi, example"}
+  italy_drives:
+    BGY: {km: 311, hours: 3.15, toll_eur: 21.0, note: "example"}
   leave_home_after: "05:00"
   airport_margin_hours: 2
   # Paula and Basia: weekend flights between 10:00 and 18:00 preferred. Their flight

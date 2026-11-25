@@ -105,6 +105,11 @@ li { margin: 2px 0; }
   border-top: 1px solid var(--line); }
 .st-open { color: var(--open); font-weight: 600; }
 .opt.unchecked { border-style: dashed; opacity: 0.75; }
+.mini { font-size: 0.85rem; margin: 12px 0 4px; }
+.trips { margin: 0; padding-left: 18px; font-size: 0.85rem; }
+.trips li { margin-bottom: 4px; }
+table.costs { font-size: 0.85rem; margin: 0; }
+table.costs td { padding: 2px 12px 2px 0; border: 0; }
 .warn { margin: 0 0 8px; color: var(--open); font-weight: 600; font-size: 0.85rem; }
 .st-checked { color: var(--ok); }
 details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
@@ -147,7 +152,7 @@ footer { color: var(--muted); font-size: 0.8rem; margin-top: 24px; }
       <table>
         <thead><tr>
           <th>Day back</th><th>Next stay</th><th>Nights</th><th>Family</th><th>Travel</th>
-          <th>Door to door (M / P+B)</th><th>Flights</th>
+          <th>Door to door (M / P+B)</th><th>Total cost</th><th>Checks</th>
         </tr></thead>
         <tbody>
         {% for s in scenarios %}
@@ -161,9 +166,10 @@ footer { color: var(--muted); font-size: 0.8rem; margin-top: 24px; }
             <td>{{ "Together" if o.family_together else "Martin alone part of it" }}</td>
             <td>{{ o.mode }}</td>
             <td class="num">{{ hours(o.martin_hours) }} / {{ hours(o.family_hours) }}</td>
+            <td class="num">€{{ "%.0f"|format(o.cost) }}</td>
             <td>{% if o.open_checks %}<span class="st-open">{{ o.open_checks }} to check</span>{% else %}<span class="st-checked">checked</span>{% endif %}</td>
             {% else %}
-            <td colspan="6">No feasible option</td>
+            <td colspan="7">No feasible option</td>
             {% endif %}
           </tr>
         {% endfor %}
@@ -230,6 +236,18 @@ footer { color: var(--muted); font-size: 0.8rem; margin-top: 24px; }
           <span class="chip">{{ o.mode }}</span>
           <span class="chip">Travel: Martin {{ hours(o.martin_hours) }}, P+B {{ hours(o.family_hours) }}</span>
         </div>
+        {% if o.trips %}
+        <h4 class="mini">Door to door</h4>
+        <ul class="trips">
+          {% for t in o.trips %}<li><strong>{{ t.who }}</strong>, {{ t.route }}: {{ t.when }}<br><span class="sub">{{ t.how }}</span></li>{% endfor %}
+        </ul>
+        {% endif %}
+        {% if o.costs %}
+        <h4 class="mini">Cost: €{{ "%.0f"|format(o.cost) }}</h4>
+        <table class="costs">
+          {% for k, v in o.costs %}<tr><td>{{ k }}</td><td class="num">€{{ "%.0f"|format(v) }}</td></tr>{% endfor %}
+        </table>
+        {% endif %}
         {% if o.pros %}<ul class="pros">{% for p in o.pros %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
         {% if o.cons %}<ul class="cons">{% for c in o.cons %}<li>{{ c }}</li>{% endfor %}</ul>{% endif %}
         <details{{ ' open' if o.recommended }}>

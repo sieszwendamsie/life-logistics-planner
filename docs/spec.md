@@ -99,6 +99,14 @@ Personal data stays **out of git**. Real files live in `data/` (gitignored).
    after `leave_home_after` (05:00) and arriving `airport_margin_hours` (2 h)
    before take-off. Paula can't drive him and he does not sleep at airports.
    Door-to-door time then counts from that bus or train.
+   Door to door and cost summary: each option lists every journey from home
+   to Faenza (or straight to the office when arriving on a working day by
+   `office_if_arriving_by`) with leave and arrive times: taxi to Poznań
+   airport (`travel.home_rides`, Bolt/Uber ~60 PLN), 2 h at the airport,
+   the flight, 30 min after landing, then the drive (`travel.italy_drives`,
+   Google Maps time, toll) or train. Cost is split into flights, car hire,
+   own car, driving in Italy (tolls + fuel, also for hire cars: two drives
+   when Martin fetches Paula and Basia), taxis, trains and buses.
 5. **Compare.** `planner report` combines windows, stays and transport into
    2–4 options ranked by timing first (route choice, door-to-door time per
    person), cost last, with pros/cons and a recommendation,
