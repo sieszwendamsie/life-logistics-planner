@@ -271,6 +271,27 @@ def test_no_car_near_other_travel_or_short_stay() -> None:
     assert not any(o.martin_drives for o in short)
 
 
+def test_cli_scenarios_compares_return_dates(capsys: pytest.CaptureFixture[str]) -> None:
+    args = [
+        "scenarios",
+        "--constraints",
+        str(EXAMPLES / "constraints.yaml"),
+        "--accommodation",
+        str(EXAMPLES / "accommodation.yaml"),
+        "--transport",
+        str(EXAMPLES / "options.yaml"),
+        "--back",
+        "2026-12-27=Flight A",
+        "--back",
+        "2027-01-03",
+    ]
+    assert main(args) == 0
+    out = capsys.readouterr().out
+    assert "Back in Poznań Sun 27 Dec 2026 (Flight A)" in out
+    assert "Back in Poznań Sun 03 Jan 2027" in out
+    assert "Next stay can start Sun 24 Jan to Sun 31 Jan." in out
+
+
 def test_unchecked_flight_is_a_con() -> None:
     [o] = build_options(CONSTRAINTS, PLACES, JOURNEYS, [w("2027-02-01", "2027-02-22")])
     assert any("not checked live yet" in c for c in o.cons)
