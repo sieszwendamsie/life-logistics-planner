@@ -113,7 +113,10 @@ def test_car_only_on_days_off() -> None:
         {
             **BASE,
             "travel": {**BASE["travel"], "car": {"min_stay_days": 1}},
-            "holidays": [{"day": "2027-03-29", "country": "PL", "name": "Easter Monday"}],
+            "holidays": [
+                {"day": "2027-03-29", "country": "IT", "name": "Easter Monday"},
+                {"day": "2027-05-03", "country": "PL", "name": "Constitution Day"},
+            ],
         }
     )
     no_flights = OptionsFile(options=[])
@@ -123,7 +126,9 @@ def test_car_only_on_days_off() -> None:
         return any(o.martin_drives for o in build_options(c, HOUSE, no_flights, [w]))
 
     assert not drives("2027-02-09", "2027-03-02")  # Tuesday to Tuesday
-    assert drives("2027-03-06", "2027-03-29")  # Saturday to Easter Monday
+    assert drives("2027-03-06", "2027-03-29")  # Saturday to Easter Monday (office closed)
+    # A Polish holiday is a normal paid working day for Martin: no driving.
+    assert not drives("2027-04-10", "2027-05-03")
 
 
 def test_martin_flying_on_a_working_day_is_a_con() -> None:

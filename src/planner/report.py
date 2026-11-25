@@ -12,7 +12,7 @@ from pathlib import Path
 from jinja2 import Environment, PackageLoader, select_autoescape
 
 from planner.models import AccommodationFile, Constraints, OptionsFile
-from planner.options import Leg, Option, build_options, shortlist
+from planner.options import Journey, Leg, Option, build_options, shortlist
 from planner.windows import find_windows
 
 LABELS = "ABCDEFGHIJ"
@@ -104,6 +104,17 @@ class Row:
     markers: list[Marker]
 
 
+def _trip_text(j: Journey) -> dict[str, str]:
+    who = {"Martin": "Martin", "family": "Paula + Basia", "everyone": "Everyone"}[j.who]
+    if j.leave and j.arrive:
+        when = f"leave {j.leave:%a %d %b %H:%M}, arrive {j.arrive:%a %d %b %H:%M} ({j.hours:.1f} h)"
+    elif j.hours is not None:
+        when = f"about {j.hours:.0f} h"
+    else:
+        when = "time unknown"
+    return {"who": who, "route": f"{j.start} to {j.end}", "when": when, "how": j.how}
+
+
 @dataclass
 class OptionView:
     key: str  # e.g. "2A"
@@ -120,9 +131,12 @@ class OptionView:
     pros: list[str]
     cons: list[str]
     rows: list[Row]
-    open_flights: int
+    open_checks: int  # flights, hire cars or trains not checked live yet
     family_text: str = ""
     recommended: bool = False
+    # Door to door per journey, and the cost by kind.
+    trips: list[dict[str, str]] = field(default_factory=list)
+    costs: list[tuple[str, float]] = field(default_factory=list)
 
 
 @dataclass
@@ -333,12 +347,16 @@ def build_view(
                         if not x.startswith("No direct flight") and "price per night" not in x
                     ],
                     rows=rows,
-                    # Flights not found yet, or recorded without a live check.
-                    open_flights=sum(
+                    # Flights not found yet or not checked live, plus hire cars or
+                    # trains without a live price.
+                    open_checks=o.open_ground
+                    + sum(
                         leg.mode == "flight"
                         and (leg.choice is None or leg.choice.checked_on is None)
                         for leg in o.legs
                     ),
+                    trips=[_trip_text(j) for j in o.journeys],
+                    costs=sorted(o.costs.items(), key=lambda kv: -kv[1]),
                     family_text=(
                         f"Paula and Basia at {o.house.name} "
                         f"{(o.family_start or o.house_start):%d %b} to "
@@ -348,7 +366,7 @@ def build_view(
             )
         # Only options whose flights were all checked live can be proposed.
         checked = [
-            (ov, o) for ov, o in zip(view.options, s.options, strict=False) if not ov.open_flights
+            (ov, o) for ov, o in zip(view.options, s.options, strict=False) if not ov.open_checks
         ]
         if checked:
             view.best = checked[0][0]

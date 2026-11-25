@@ -11,6 +11,7 @@ stay_rules:
   max_stay_days: 28
   min_gap_days: 28
   max_gap_days: 35
+  travel_on_office_days: false  # arrive the day before a required office day
 
 office_required:
   - {start: 2027-02-01, end: 2027-02-05}
@@ -50,9 +51,52 @@ travel:
     min_stay_days: 21
     clear_days: 7
     days_off_only: true  # drive only on weekends, holidays, shutdown or leave days
-  # Paula and Basia: weekend flights between 10:00 and 18:00 preferred. Their flight
-  # day can move up to shift_days into the stay to get there. Soft rules.
-  family_flights: {weekend: true, earliest: "10:00", latest: "18:00", shift_days: 4}
+    # Cost of one drive (assumptions; defaults shown). Vignettes: the cheapest of one
+    # per drive or one long one covering both drives is picked per country.
+    costs:
+      distance_km: 1400
+      l_per_100km: 6
+      diesel_eur_per_l: 2.00
+      toll_eur: 32.20  # Italy one way, via the free Venice bypass
+  # Martin alone flying into these airports takes the train; otherwise he hires a
+  # car. With Paula and Basia there a car is always needed (hire prices from Kayak,
+  # recorded under `ground:` in options.yaml).
+  train_airports: [BLQ]
+  # Other airports (Wrocław, Warsaw, Berlin) need a live-checked bus or train from
+  # home (`ground:` kind transfer in options.yaml) for Martin alone, leaving after
+  # 05:00 and arriving 1.5 h before the flight. No airport hotels.
+  home_airports: [POZ]
+  # A relative drives Paula and Basia (and Martin when they fly together) to and
+  # from these airports (Google Maps time and km, toll one way). Martin pays their
+  # fuel and tolls, there and back for each lift.
+  family_lifts:
+    WRO: {hours: 2.07, km: 203, note: "relative's lift, example"}
+    WAW: {hours: 3.08, km: 315, toll_eur: 19.39, note: "relative's lift, example"}
+  pl_fuel_eur_per_l: 1.75
+  # An infant on a lap pays the airline's infant fee per flight. Large bags only
+  # when nobody drives (the car carries them otherwise), per adult per flight.
+  infants: 1
+  infant_fee_eur: {Ryanair: 25}
+  checked_bags_per_adult: 1
+  checked_bag_eur: {Ryanair: 59.99}
+  # Door to door: names for the ends of each journey, taxi to the home airport,
+  # and drives from Italian airports (Google Maps time, toll one way).
+  home_name: home
+  italy_home_name: Faenza
+  office_name: the office
+  home_rides:
+    POZ: {hours: 0.33, price_eur: 14, note: "taxi, example"}
+  italy_drives:
+    BGY: {km: 311, hours: 3.15, toll_eur: 21.0, note: "example"}
+  leave_home_after: "05:00"
+  airport_margin_hours: 1.5
+  # Paula and Basia: weekend flights between 10:00 and 18:00 preferred, then the
+  # shortest door-to-door time. Their flight day can move up to shift_days into the
+  # stay. Hard limits door to door: leave home (Poznań or Faenza) after 05:00 and
+  # arrive home by 20:00, or the flight is not used.
+  family_flights:
+    {weekend: true, earliest: "10:00", latest: "18:00", shift_days: 4,
+     leave_home_after: "05:00", arrive_home_by: "20:00"}
   # Try not to fly on long weekends in Poland or Italy (dearer). Soft rule.
   avoid_long_weekends: true
 

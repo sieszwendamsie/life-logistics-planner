@@ -32,7 +32,7 @@ def test_view_has_timeline_rows_inside_axis_and_one_recommendation() -> None:
     assert options, "examples should give at least one option"
     assert sum(o.recommended for o in options) <= 1
     # Only options whose flights were all checked live can be recommended.
-    assert all(not o.open_flights for o in options if o.recommended)
+    assert all(not o.open_checks for o in options if o.recommended)
     for o in options:
         assert [r.who for r in o.rows] == ["Martin", "Paula + Basia"]
         for r in o.rows:

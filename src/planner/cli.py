@@ -5,6 +5,7 @@ Commands:
   options   combine windows, accommodation and journeys into a short list of options
   scenarios compare what each possible return date means for the next stay
   report    the same as scenarios, drawn as one HTML page (out/report.html)
+  routes    which flight times can work per route (search only inside these)
 """
 
 import argparse
@@ -15,6 +16,7 @@ from planner import __version__
 from planner.loaders import load_accommodation, load_constraints, load_options
 from planner.options import Option, build_options, shortlist
 from planner.report import parse_variant, render, scenario, write
+from planner.routes import route_windows, table
 from planner.windows import find_windows
 
 DEFAULT_CONSTRAINTS = Path("data/constraints.yaml")
@@ -102,7 +104,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="also try each day back with changed rules, e.g. 'Drive 31 Jan:solo_max_days=9'",
     )
     rep.add_argument("--out", type=Path, default=Path("out/report.html"), help="output file")
+
+    routes = sub.add_parser("routes", help="flight times that can work, per route")
+    routes.add_argument(
+        "--constraints",
+        type=Path,
+        default=DEFAULT_CONSTRAINTS,
+        help=f"constraints file (default: {DEFAULT_CONSTRAINTS})",
+    )
+    routes.add_argument(
+        "--month", help="YYYY-MM: also print Ryanair's per-day fares link for each route"
+    )
     return parser
+
+
+def _cmd_routes(args: argparse.Namespace) -> int:
+    if not args.constraints.exists():
+        print(f"No file at {args.constraints}. See examples/constraints.yaml.")
+        return 1
+    print(table(route_windows(load_constraints(args.constraints).travel), args.month))
+    return 0
 
 
 def _cmd_windows(args: argparse.Namespace) -> int:
@@ -248,5 +269,7 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_scenarios(args)
     if args.command == "report":
         return _cmd_report(args)
+    if args.command == "routes":
+        return _cmd_routes(args)
     parser.print_help()
     return 0

@@ -30,6 +30,9 @@ class StayRules(BaseModel):
     max_stay_days: int = Field(ge=1)
     min_gap_days: int = Field(ge=0)
     max_gap_days: int = Field(ge=0)
+    # Martin never travels on a day he must be in the office in Italy: he arrives
+    # at least the day before and leaves at the earliest the day after.
+    travel_on_office_days: bool = False
 
     @model_validator(mode="after")
     def _min_not_above_max(self) -> "StayRules":
@@ -74,6 +77,39 @@ class RouteTier(BaseModel):
     destinations: list[str]
 
 
+class Vignette(BaseModel):
+    """A motorway vignette: valid for `days` consecutive days from the first use."""
+
+    country: str  # CZ, AT, ...
+    days: int = Field(ge=1)
+    price_eur: float = Field(ge=0)
+
+
+class CarCosts(BaseModel):
+    """Assumptions for the cost of one drive between Poznań and Faenza.
+
+    Defaults: Martin's route (about 1400 km, 6 l/100 km diesel), CZ and AT
+    vignettes, Italian toll Ugovizza-Tarvisio to Faenza using the free Venice
+    bypass (off at Venezia Est, back on at Padova Est). Prices checked on
+    2026-11-25; sources in docs/spec.md.
+    """
+
+    distance_km: float = Field(default=1400, gt=0)  # one way
+    l_per_100km: float = Field(default=6, gt=0)
+    diesel_eur_per_l: float = Field(default=2.00, gt=0)  # average along the route
+    toll_eur: float = Field(default=32.20, ge=0)  # one way, Italy
+    vignettes: list[Vignette] = Field(
+        default_factory=lambda: [
+            Vignette(country="CZ", days=1, price_eur=9.41),
+            Vignette(country="CZ", days=10, price_eur=12.28),
+            Vignette(country="CZ", days=30, price_eur=19.65),
+            Vignette(country="AT", days=1, price_eur=9.80),
+            Vignette(country="AT", days=10, price_eur=13.00),
+            Vignette(country="AT", days=61, price_eur=32.60),
+        ]
+    )
+
+
 class CarSettings(BaseModel):
     """Martin drives Poznań to Faenza while the family flies."""
 
@@ -85,6 +121,7 @@ class CarSettings(BaseModel):
     # Martin is paid per hour, so he drives only on days he would not work:
     # weekends, public holidays (PL or IT), shutdown and leave days.
     days_off_only: bool = True
+    costs: CarCosts = Field(default_factory=CarCosts)
 
 
 class FamilyFlights(BaseModel):
@@ -98,6 +135,38 @@ class FamilyFlights(BaseModel):
     earliest: time = time(10, 0)  # preferred departure window
     latest: time = time(18, 0)
     shift_days: int = Field(default=4, ge=0)
+    # Hard limits, door to door (home in Poznań or Faenza): flights that make
+    # Paula and Basia leave earlier or arrive later are never proposed.
+    leave_home_after: time = time(5, 0)
+    arrive_home_by: time = time(20, 0)
+    # Short stay before the house is free: Paula and Basia may arrive up to this
+    # many nights early, on a day off (weekend or holiday), and stay elsewhere
+    # (a city break). Priced from a live quote under `quotes:` in accommodation.yaml.
+    bridge_nights: int = Field(default=3, ge=0)
+
+
+class Ride(BaseModel):
+    """Taxi (Bolt, Uber) or a relative's lift between home and an airport.
+
+    Taxi: `price_eur` per ride. Lift: the relative drives there and back each
+    time, so one lift costs 2 x (km x l/100 km x Polish diesel + toll), from
+    `km` and `toll_eur` (one way), on top of `price_eur`.
+    """
+
+    hours: float = Field(gt=0)
+    price_eur: float = Field(default=0, ge=0)
+    km: float = Field(default=0, ge=0)  # one way
+    toll_eur: float = Field(default=0, ge=0)  # one way
+    note: str = ""
+
+
+class ItalyDrive(BaseModel):
+    """Driving between an Italian airport and Faenza (own car or hire car)."""
+
+    km: float = Field(gt=0)
+    hours: float = Field(gt=0)
+    toll_eur: float = Field(ge=0)  # one way
+    note: str = ""
 
 
 class Travel(BaseModel):
@@ -109,6 +178,44 @@ class Travel(BaseModel):
     # Hours from each airport to home (Poznań or Faenza), used for door-to-door time.
     transfer_hours: dict[str, float] = Field(default_factory=dict)
     car: CarSettings | None = None
+    # When Martin is in Italy alone and flies into one of these airports, he takes
+    # the train (e.g. Marconi Express + train to Faenza) instead of hiring a car.
+    # When Paula and Basia are there, a car is always needed.
+    train_airports: list[str] = Field(default_factory=lambda: ["BLQ"])
+    # Airports near home reached by taxi or local bus (time from transfer_hours).
+    # Any other airport in Poland or Germany needs a live-checked bus or train
+    # (`ground:` kind transfer). Paula can't drive Martin; no airport hotels.
+    home_airports: list[str] = Field(default_factory=lambda: ["POZ"])
+    leave_home_after: time = time(5, 0)  # earliest bus/train from home
+    airport_margin_hours: float = Field(default=1.5, ge=0)  # at the airport before take-off
+    # Basia flies on Paula's lap as an infant (under 2): no seat, an infant fee
+    # per one-way flight, with the baby allowance (small bag, child seat, stroller).
+    infants: int = Field(default=1, ge=0)
+    infant_fee_eur: dict[str, float] = Field(default_factory=dict)  # by airline
+    # Large luggage: when Martin drives it goes in the car and Paula and Basia
+    # travel light. When nobody drives, each adult checks this many 20 kg bags
+    # on every flight, at checked_bag_eur by airline.
+    checked_bags_per_adult: int = Field(default=1, ge=0)
+    checked_bag_eur: dict[str, float] = Field(default_factory=dict)
+    # Door to door: names for the ends of a journey (real places stay in data/).
+    home_name: str = "home"
+    italy_home_name: str = "Faenza"
+    office_name: str = "the office"
+    # Arriving on a working day by this time, Martin goes straight to the office.
+    office_if_arriving_by: time = time(12, 0)
+    # Taxi between home and a nearby airport (e.g. POZ), per ride.
+    home_rides: dict[str, Ride] = Field(default_factory=dict)
+    # A relative drives Paula and Basia (and Martin, when they fly together)
+    # between home and these airports (Google Maps time). No bus or train needed.
+    family_lifts: dict[str, Ride] = Field(default_factory=dict)
+    # Drives between Italian airports and Faenza (Google Maps time, toll one way).
+    italy_drives: dict[str, ItalyDrive] = Field(default_factory=dict)
+    italy_fuel_eur_per_l: float = Field(default=2.22, gt=0)
+    pl_fuel_eur_per_l: float = Field(default=1.75, gt=0)  # diesel in Poland, for lifts
+    # From landing to leaving the airport (bags, hire-car desk).
+    arrival_buffer_hours: float = Field(default=0.5, ge=0)
+    # From Faenza station to the house, when arriving by train.
+    station_to_home_hours: float = Field(default=0.4, ge=0)
     family_flights: FamilyFlights = Field(default_factory=FamilyFlights)
     # Try not to fly on long weekends (prices are higher). Soft rule.
     avoid_long_weekends: bool = True
@@ -163,8 +270,10 @@ class Constraints(BaseModel):
     leave: list[DateRange] = Field(default_factory=list)
 
     def day_off(self, d: date) -> bool:
-        """True if Martin does not work that day: weekend, holiday, shutdown, leave."""
-        if d.weekday() >= 5 or any(h.day == d for h in self.holidays):
+        """True if Martin does not work that day: weekend, Italian public holiday
+        (the office is closed), shutdown or leave. Polish public holidays are normal
+        working days for him (he is paid per hour), so they don't count."""
+        if d.weekday() >= 5 or any(h.day == d and h.country == "IT" for h in self.holidays):
             return True
         return any(r.start <= d <= r.end for r in [*self.shutdown, *self.leave])
 
@@ -197,6 +306,18 @@ class Constraints(BaseModel):
         ]
 
 
+class StayQuote(BaseModel):
+    """A live-checked price for one stay (Booking, Airbnb...), whole stay total."""
+
+    start: date  # check-in
+    end: date  # check-out
+    guests: str = ""  # e.g. "2 adults + infant"
+    name: str = ""  # the property found
+    price_eur: float = Field(ge=0)
+    source_url: str | None = None
+    checked_on: date | None = None
+
+
 class Accommodation(BaseModel):
     """One place to stay, with the dates it is free.
 
@@ -217,6 +338,7 @@ class Accommodation(BaseModel):
     price_per_night_eur: float | None = Field(default=None, ge=0)
     available: list[DateRange] = Field(default_factory=list)
     unavailable: list[DateRange] = Field(default_factory=list)
+    quotes: list[StayQuote] = Field(default_factory=list)
 
 
 class AccommodationFile(BaseModel):
@@ -243,6 +365,13 @@ class TransportOption(BaseModel):
     depart: datetime
     arrive: datetime
     price_eur: float = Field(ge=0)
+    # How many seats `price_eur` covers. The planner uses the price per seat
+    # times the adult seats on the leg (Martin 1, Paula 1, both 2); an infant on
+    # a lap pays the airline's infant fee instead (travel.infant_fee_eur).
+    seats: int = Field(default=1, ge=1)
+    # Live price of a 20 kg checked bag on this flight, per adult (e.g. Ryanair
+    # PLUS minus BASIC). Empty: travel.checked_bag_eur for the airline is used.
+    bag_eur: float | None = Field(default=None, ge=0)
     source_url: str | None = None
     # When this was seen in a live search (airline site or app, or Momondo).
     # Empty means not verified: the planner shows it as a con.
@@ -255,7 +384,34 @@ class TransportOption(BaseModel):
         return self
 
 
+class GroundOption(BaseModel):
+    """A live-checked hire car or train in Italy (Kayak, Trenitalia...).
+
+    Hire car: `start` is the pick-up day, `end` the drop-off day. Train: `start`
+    is the travel day (`end` empty). `price_eur` is the total for that booking.
+    """
+
+    id: str
+    kind: Literal["car_hire", "train", "transfer"]
+    start: date
+    end: date | None = None
+    # transfer only: bus or train between home and a far airport, per person.
+    airport: str | None = None  # IATA code of the airport it serves
+    depart: datetime | None = None
+    arrive: datetime | None = None
+    # car_hire only: airports (IATA) where the car is picked up and dropped off.
+    # When set, the quote is only used if they match the flights.
+    pick_up: str | None = None
+    drop_off: str | None = None
+    where: str = ""  # e.g. "BGY to BGY" or "Faenza to Bergamo airport"
+    detail: str = ""  # e.g. "Ford Fiesta or similar, DiscoverCars" or train times
+    price_eur: float = Field(ge=0)
+    source_url: str | None = None
+    checked_on: date | None = None
+
+
 class OptionsFile(BaseModel):
     """Contents of options.yaml."""
 
     options: list[TransportOption]
+    ground: list[GroundOption] = Field(default_factory=list)

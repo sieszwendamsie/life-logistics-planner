@@ -71,13 +71,60 @@ Personal data stays **out of git**. Real files live in `data/` (gitignored).
       Bergamo, Florence, ...).
    3. Wrocław, Warsaw Chopin or Berlin (not Modlin) to Bologna.
    4. If none of these exist, ask Claude for an alternative route.
-   Paula and Basia prefer weekend flights leaving 10:00–18:00; their flight
-   day may move up to 4 days into the stay to get one. Avoid flying on long
+   Paula and Basia: their trips are planned for their convenience. Hard rule:
+   leave home (Poznań or Faenza) no earlier than 05:00 and arrive home by
+   20:00, door to door, or the flight is not used. A relative drives them to
+   and from Poznań, Wrocław or Warsaw airports (`travel.family_lifts`, Google
+   Maps time), so they need no bus or train. Then weekend flights first, the
+   shortest door-to-door time, a departure between 10:00 and 18:00, and route
+   choice. Their flight day may move up to 4 days into the stay to get one.
+   When the house is not free yet, they may instead come up to 3 nights
+   early on a day off (weekend or holiday) for a short city break elsewhere
+   (`family_flights.bridge_nights`), priced from a live quote under the
+   other place's `quotes:` in accommodation.yaml (Booking, Airbnb).
+   Hire-car quotes record `pick_up` and `drop_off` airports and are only used
+   when they match the flights. Avoid flying on long
    weekends in Poland or Italy (dearer), and prefer being in Poland on public
    holidays. These are soft rules: cons in the report, ranked after timing.
    Car: only on days Martin does not work (weekends, public holidays,
    shutdown, leave), because he is paid per hour. For long stays with no other travel plans nearby, Martin drives
    Poznań to Faenza and Paula and Basia fly. This is preferred when allowed.
+   Driving cost is in the total (`travel.car.costs`, assumptions checked
+   2026-11-25): 1400 km each way at 6 l/100 km, diesel €2.00/l (EU Oil Bulletin,
+   9 Nov 2026: PL 1.75, CZ 1.90, AT 2.09, IT 2.22); Italian toll €32.20 one way
+   (calcolopedaggio.it: Ugovizza-Tarvisio to Venezia Est €18.90, free Mestre
+   bypass, Padova Est to Faenza €13.30; the full route via the Passante is
+   €34.80); vignettes CZ 1/10/30 days €9.41/12.28/19.65 (230/300/480 Kč),
+   AT 1/10 days and 2 months €9.80/13.00/32.60 (2-month bought online starts
+   18 days later). Per country the cheaper of one vignette per drive or one
+   long one covering both drives is used. When Martin flies there is no assumed
+   price: hire cars (Kayak) and trains (Trenitalia, Marconi Express) are
+   recorded live under `ground:` in options.yaml with source and check date.
+   Paula and Basia always need a car. Martin alone takes the train when he
+   flies into `travel.train_airports` (Bologna), else hires a car. An option
+   with an unchecked hire car or train is not a proposal yet.
+   Travel days: Martin never flies in on a required office day; he arrives
+   the day before at the latest (`stay_rules.travel_on_office_days: false`).
+   Airports other than `travel.home_airports` (Poznań) need a live-checked
+   bus or train from home (`ground:` kind transfer, per person), leaving home
+   after `leave_home_after` (05:00) and arriving `airport_margin_hours` (1.5 h)
+   before take-off. Paula can't drive him and he does not sleep at airports.
+   Door-to-door time then counts from that bus or train.
+   Door to door and cost summary: each option lists every journey from home
+   to Faenza (or straight to the office when arriving on a working day by
+   `office_if_arriving_by`) with leave and arrive times: taxi to Poznań
+   airport (`travel.home_rides`, Bolt/Uber ~60 PLN), 1.5 h at the airport,
+   the flight, 30 min after landing, then the drive (`travel.italy_drives`,
+   Google Maps time, toll) or train. Cost is split into flights, car hire,
+   own car, driving in Italy (tolls + fuel, also for hire cars: two drives
+   when Martin fetches Paula and Basia), taxis, trains and buses.
+   Seats: Martin and Paula; Basia flies on Paula's lap and pays the airline's
+   infant fee per flight (`travel.infant_fee_eur`, Ryanair €25). When Martin
+   drives, the large luggage goes in the car and Paula and Basia travel light
+   (hand luggage + baby allowance). When nobody drives, each adult checks
+   `checked_bags_per_adult` 20 kg bags per flight (`checked_bag_eur`; Ryanair's
+   fee table maximum €59.99, since the exact price shows only while booking).
+   An airline without a known fee leaves the option "not a proposal yet".
 5. **Compare.** `planner report` combines windows, stays and transport into
    2–4 options ranked by timing first (route choice, door-to-door time per
    person), cost last, with pros/cons and a recommendation,

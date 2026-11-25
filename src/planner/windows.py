@@ -10,7 +10,8 @@ A window is a departure day and a return day. Its length in days is
   Italy (`poznan_required`, and `presence` entries for Martin with #PL or #UK),
 - it does not cut through a required office period (`office_required`, and
   #IT must entries for Martin): one that overlaps the window must lie fully
-  inside it.
+  inside it. Unless `stay_rules.travel_on_office_days` is set, Martin also
+  does not travel on an office day: he arrives the day before at the latest.
 
 Accommodation is checked later, when windows become options.
 """
@@ -65,6 +66,10 @@ def find_windows(c: Constraints) -> list[Window]:
                 continue
             office = [o for o in italy if _overlaps(start, end, o)]
             if any(not _contains(start, end, o) for o in office):
+                continue
+            if not rules.travel_on_office_days and any(
+                start == o.start or end == o.end for o in office
+            ):
                 continue
             found.append(Window(start, end, tuple(office)))
         start += timedelta(days=1)
