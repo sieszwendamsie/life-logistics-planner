@@ -67,10 +67,12 @@ travel:
   # 05:00 and arriving 1.5 h before the flight. No airport hotels.
   home_airports: [POZ]
   # A relative drives Paula and Basia (and Martin when they fly together) to and
-  # from these airports. Google Maps time; the relative's cost is not counted.
+  # from these airports (Google Maps time and km, toll one way). Martin pays their
+  # fuel and tolls, there and back for each lift.
   family_lifts:
-    WRO: {hours: 2.07, price_eur: 0, note: "relative's lift, example"}
-    WAW: {hours: 3.08, price_eur: 0, note: "relative's lift, example"}
+    WRO: {hours: 2.07, km: 203, note: "relative's lift, example"}
+    WAW: {hours: 3.08, km: 315, toll_eur: 19.39, note: "relative's lift, example"}
+  pl_fuel_eur_per_l: 1.75
   # An infant on a lap pays the airline's infant fee per flight. Large bags only
   # when nobody drives (the car carries them otherwise), per adult per flight.
   infants: 1

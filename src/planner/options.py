@@ -582,15 +582,15 @@ def _journey(c: Constraints, transport: OptionsFile, leg: Leg) -> Journey:
 
 def _extras(
     c: Constraints, legs: list[Leg], w: Window, drive: bool
-) -> tuple[float, float, list[str]]:
-    """Taxis to Polish airports and drives between Italian airports and Faenza.
+) -> tuple[float, float, float, list[str]]:
+    """Taxis and relatives' lifts to Polish airports, drives in Italy.
 
-    Returns (taxi cost, driving cost, notes). Martin drives to fetch Paula and
+    Returns (taxi cost, lift cost, driving cost, notes). Martin drives to fetch Paula and
     Basia and back (two drives), or one drive when he travels himself or leaves
     Italy that day.
     """
     t = c.travel
-    taxis = driving = 0.0
+    taxis = lifts = driving = 0.0
     notes: list[str] = []
     l_per_km = t.car.costs.l_per_100km / 100 if t.car else 0.06
     martin_out = next((g for g in legs if g.who == "Martin" and g.direction == "outbound"), None)
@@ -602,8 +602,16 @@ def _extras(
             continue
         out = leg.direction == "outbound"
         pl_port, it_port = (o.origin, o.destination) if out else (o.destination, o.origin)
-        lift = leg.with_infant and pl_port in t.family_lifts
-        if leg.transfer is None and not lift and pl_port in t.home_rides:
+        lift = t.family_lifts.get(pl_port) if leg.with_infant else None
+        if leg.transfer is None and lift is not None:
+            fuel = lift.km * l_per_km * t.pl_fuel_eur_per_l
+            cost = lift.price_eur + 2 * (fuel + lift.toll_eur)
+            lifts += cost
+            notes.append(
+                f"Lift to or from {pl_port} by a relative (there and back): €{cost:.0f} "
+                f"(fuel €{2 * fuel:.0f} for {2 * lift.km:.0f} km, tolls €{2 * lift.toll_eur:.2f})"
+            )
+        elif leg.transfer is None and pl_port in t.home_rides:
             taxis += t.home_rides[pl_port].price_eur
         if it_port not in t.italy_drives or _uses_train(c, leg):
             continue
@@ -622,7 +630,7 @@ def _extras(
             f"{n} drive(s) {port} to or from Faenza: €{n * (d.toll_eur + fuel):.0f} "
             f"(toll €{d.toll_eur:.2f} + fuel €{fuel:.0f} each, {d.km:.0f} km)"
         )
-    return round(taxis, 2), round(driving, 2), notes
+    return round(taxis, 2), round(lifts, 2), round(driving, 2), notes
 
 
 def _days(start: date, end: date) -> list[date]:
@@ -865,9 +873,11 @@ def build_options(
                     leg.hours = j.hours
             martin_h = sum(g.hours or 0 for g in legs if g.who in ("Martin", "everyone"))
             family_h = sum(g.hours or 0 for g in legs if g.who in ("family", "everyone"))
-            taxis, driving, notes = _extras(c, legs, w, drive)
+            taxis, lifts, driving, notes = _extras(c, legs, w, drive)
             if taxis:
                 add("Taxis to and from airports", taxis)
+            if lifts:
+                add("Lifts by relatives in Poland: fuel, tolls", lifts)
             if driving:
                 add("Driving in Italy: tolls, fuel", driving)
             cons.extend(f"{n} (in total)" for n in notes)

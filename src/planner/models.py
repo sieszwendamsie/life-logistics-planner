@@ -142,10 +142,17 @@ class FamilyFlights(BaseModel):
 
 
 class Ride(BaseModel):
-    """Taxi (Bolt, Uber) between home and a nearby airport: one ride, any people."""
+    """Taxi (Bolt, Uber) or a relative's lift between home and an airport.
+
+    Taxi: `price_eur` per ride. Lift: the relative drives there and back each
+    time, so one lift costs 2 x (km x l/100 km x Polish diesel + toll), from
+    `km` and `toll_eur` (one way), on top of `price_eur`.
+    """
 
     hours: float = Field(gt=0)
-    price_eur: float = Field(ge=0)
+    price_eur: float = Field(default=0, ge=0)
+    km: float = Field(default=0, ge=0)  # one way
+    toll_eur: float = Field(default=0, ge=0)  # one way
     note: str = ""
 
 
@@ -200,6 +207,7 @@ class Travel(BaseModel):
     # Drives between Italian airports and Faenza (Google Maps time, toll one way).
     italy_drives: dict[str, ItalyDrive] = Field(default_factory=dict)
     italy_fuel_eur_per_l: float = Field(default=2.22, gt=0)
+    pl_fuel_eur_per_l: float = Field(default=1.75, gt=0)  # diesel in Poland, for lifts
     # From landing to leaving the airport (bags, hire-car desk).
     arrival_buffer_hours: float = Field(default=0.5, ge=0)
     # From Faenza station to the house, when arriving by train.

@@ -455,7 +455,8 @@ def test_family_window_drops_too_early_or_too_late_flights() -> None:
             *TRAVEL["route_tiers"],
             {"name": "far", "origins": ["WRO"], "destinations": ["BLQ"]},
         ],
-        "family_lifts": {"WRO": {"hours": 2, "price_eur": 0}},
+        "family_lifts": {"WRO": {"hours": 2, "km": 200, "toll_eur": 10}},
+        "pl_fuel_eur_per_l": 1.5,
     }
     c = with_travel(travel=travel)
     [o] = build_options(c, PLACES, journeys, [w("2027-02-01", "2027-02-22")])
@@ -466,6 +467,8 @@ def test_family_window_drops_too_early_or_too_late_flights() -> None:
     assert "lift" in j.how
     assert j.leave == datetime(2027, 2, 22, 11, 30)  # 14:00 - 1.5 h - 1 h to BLQ
     assert j.arrive == datetime(2027, 2, 22, 17, 30)  # 15:00 + 0.5 h + 2 h lift
+    # The relative drives there and back: 2 x (200 km x 6 l/100 km x €1.50 + €10 toll).
+    assert o.costs["Lifts by relatives in Poland: fuel, tolls"] == 2 * (200 * 0.06 * 1.5 + 10)
 
 
 def test_family_flight_too_late_is_not_used() -> None:
