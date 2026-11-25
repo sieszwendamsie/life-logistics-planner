@@ -36,4 +36,4 @@ and say so when a better existing tool already does the job.
 - src/planner/ : Python package (CLI skeleton in place)
 - examples/ : fake data, safe to commit (planned)
 - data/, out/ : real personal data and reports, gitignored, never commit
-- .claude/skills/ : planning workflows (planned)
+- .claude/skills/ : planning workflows (import-calendar reads Google Calendar into data/)
