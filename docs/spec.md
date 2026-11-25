@@ -59,6 +59,11 @@ Personal data stays **out of git**. Real files live in `data/` (gitignored).
    `solo_max_days` (default 7).
 4. **Collect transport options** for the best 3–5 windows (Momondo, Ryanair,
    Wizz, others) into `data/options.yaml`. Read only. Never book.
+   Flight times and prices come only from a live search on the airline's own
+   site or app, or Momondo, with `source_url` and `checked_on` filled in.
+   Never use schedule or route sites (FlightMapper, FlightConnections and
+   similar) for times: they can be out of date. If a live check is not possible,
+   say so and ask Martin to paste what he sees.
    Direct flights only, searched in this order (`travel.route_tiers`):
    1. Poznań to Bologna, Rimini or Forlì.
    2. Poznań to another nearby Italian airport (Treviso, Venice, Verona,
