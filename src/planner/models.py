@@ -54,16 +54,20 @@ class Constraints(BaseModel):
     office_required: list[DateRange] = Field(default_factory=list)
     poznan_required: list[DateRange] = Field(default_factory=list)
     family: list[FamilyPeriod] = Field(default_factory=list)
-    # Dates the family house in Italy can be used. Outside these dates Martin may
-    # still stay alone, but only for solo_max_days at most.
-    family_house_available: list[DateRange] = Field(default_factory=list)
+    # If the family house (La Suite Elena, Faenza) is not free, Martin may stay alone
+    # elsewhere, but for no more than solo_max_days.
     solo_max_days: int = Field(default=7, ge=1)
 
 
 class Accommodation(BaseModel):
-    """One place to stay, with the dates it is free."""
+    """One place to stay, with the dates it is free.
+
+    The preferred place is the family house: the planner only travels to its town
+    when it is free.
+    """
 
     name: str
+    location: str | None = None
     preferred: bool = False
     price_per_night_eur: float | None = Field(default=None, ge=0)
     available: list[DateRange] = Field(default_factory=list)

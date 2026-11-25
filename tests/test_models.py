@@ -51,4 +51,10 @@ def test_family_mode_must_be_known(tmp_path: Path) -> None:
 def test_solo_stay_limit_defaults_to_one_week() -> None:
     constraints = load_constraints(EXAMPLES / "constraints.yaml")
     assert constraints.solo_max_days == 7
-    assert constraints.family_house_available[0].start == date(2027, 1, 20)
+
+
+def test_preferred_accommodation_is_the_family_house() -> None:
+    data = load_accommodation(EXAMPLES / "accommodation.yaml")
+    preferred = [a for a in data.accommodation if a.preferred]
+    assert len(preferred) == 1
+    assert preferred[0].location == "Faenza"

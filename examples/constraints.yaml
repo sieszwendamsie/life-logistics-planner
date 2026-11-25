@@ -18,8 +18,5 @@ poznan_required:
 family:
   - {start: 2027-02-20, end: 2027-03-07, mode: together}
 
-# Dates the family house is free. Outside these, Martin can stay alone for up to solo_max_days.
-family_house_available:
-  - {start: 2027-01-20, end: 2027-02-15}
-
+# If the family house is not free, Martin can stay alone elsewhere for up to this many days.
 solo_max_days: 7
