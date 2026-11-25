@@ -410,3 +410,18 @@ def test_far_airport_needs_a_checked_bus_or_train() -> None:
     [o] = build_options(c, PLACES, OptionsFile.model_validate(ok), win)
     assert o.legs[0].transfer.id == "c"
     assert o.legs[0].hours == 9.5 + 0.5 + 1  # bus 06:00 to landing 15:30, bags, BLQ to home
+
+
+def test_flight_bag_price_beats_airline_table() -> None:
+    journeys = OptionsFile.model_validate(
+        {
+            "options": [
+                flight("f1", "outbound", "POZ", "BLQ", "2027-02-01") | {"bag_eur": 10},
+                flight("f2", "return", "BLQ", "POZ", "2027-02-22"),
+            ]
+        }
+    )
+    c = with_travel(travel={**TRAVEL, "car": None})
+    [o] = build_options(c, PLACES, journeys, [w("2027-02-01", "2027-02-22")])
+    # Out: 2 adults x €10 (this flight); back: 2 adults x €40 (airline table).
+    assert o.costs["Checked bags"] == 2 * 10 + 2 * 40

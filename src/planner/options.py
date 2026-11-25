@@ -717,7 +717,9 @@ def build_options(
                             add("Infant fees", fee * c.travel.infants)
                     bags = 0 if drive else leg.people * c.travel.checked_bags_per_adult
                     if bags:
-                        fee = _by_airline(c.travel.checked_bag_eur, carrier)
+                        fee = leg.choice.bag_eur
+                        if fee is None:
+                            fee = _by_airline(c.travel.checked_bag_eur, carrier)
                         if fee is None:
                             open_ground += 1
                             cons.append(f"{carrier}: 20 kg bag price not checked yet")

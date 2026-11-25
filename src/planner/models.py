@@ -335,6 +335,9 @@ class TransportOption(BaseModel):
     # times the adult seats on the leg (Martin 1, Paula 1, both 2); an infant on
     # a lap pays the airline's infant fee instead (travel.infant_fee_eur).
     seats: int = Field(default=1, ge=1)
+    # Live price of a 20 kg checked bag on this flight, per adult (e.g. Ryanair
+    # PLUS minus BASIC). Empty: travel.checked_bag_eur for the airline is used.
+    bag_eur: float | None = Field(default=None, ge=0)
     source_url: str | None = None
     # When this was seen in a live search (airline site or app, or Momondo).
     # Empty means not verified: the planner shows it as a con.
