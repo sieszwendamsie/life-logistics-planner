@@ -93,7 +93,7 @@ def test_whole_stay_in_house_is_family_together_with_cheapest_flights() -> None:
     [o] = build_options(CONSTRAINTS, PLACES, JOURNEYS, [w("2027-02-01", "2027-02-22")])
     assert o.family_together
     assert [leg.choice.id for leg in o.legs if leg.choice] == ["o1", "r1"]
-    assert o.total_cost_eur == 21 * 100 + 40 + 60
+    assert o.total_cost_eur == 21 * 100 + 3 * (40 + 60)  # price per person x 3
     assert o.travel_hours == 4
 
 
@@ -271,7 +271,9 @@ def test_car_option_when_no_other_travel_nearby() -> None:
     # Driving costs are in the total; the flying option has no hire car by default.
     fly = next(o for o in built if not o.martin_drives)
     drive_cost = round_trip(CarCosts(), date(2027, 2, 1), date(2027, 2, 22)).total_eur
-    assert car[0].total_cost_eur == pytest.approx(fly.total_cost_eur + drive_cost)
+    assert car[0].total_cost_eur == pytest.approx(
+        fly.total_cost_eur - 100 + drive_cost
+    )  # Martin drives, no seat
     assert any("Driving there and back" in x for x in car[0].cons)
 
 

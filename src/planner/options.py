@@ -538,7 +538,7 @@ def build_options(
                         f"{c.travel.airport_margin_hours:g} h before the flight"
                     )
                 if leg.choice is not None:
-                    cost += leg.choice.price_eur
+                    cost += leg.choice.price_eur / leg.choice.seats * leg.people
                     if leg.choice.checked_on is None:
                         cons.append(
                             f"{leg.choice.carrier} {leg.choice.id} on {leg.day} not checked "

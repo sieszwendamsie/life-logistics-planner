@@ -290,6 +290,9 @@ class TransportOption(BaseModel):
     depart: datetime
     arrive: datetime
     price_eur: float = Field(ge=0)
+    # How many people `price_eur` covers. The planner uses the price per person
+    # times the people on the leg (Martin 1, Paula and Basia 2, everyone 3).
+    seats: int = Field(default=1, ge=1)
     source_url: str | None = None
     # When this was seen in a live search (airline site or app, or Momondo).
     # Empty means not verified: the planner shows it as a con.
