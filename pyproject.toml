@@ -3,7 +3,10 @@ name = "life-logistics-planner"
 version = "0.1.0"
 description = "Personal planner for stays, office days and travel between Poznań and Italy"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pydantic>=2.14.4",
+    "pyyaml>=6.0.4",
+]
 
 [project.scripts]
 planner = "planner.cli:main"

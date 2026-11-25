@@ -1,0 +1,10 @@
+# Fake example data. Times are local departure and arrival.
+options:
+  - id: ryanair-example-1
+    carrier: Ryanair
+    origin: Poznań (POZ)
+    destination: Bergamo (BGY)
+    depart: 2027-01-20T06:10:00
+    arrive: 2027-01-20T08:35:00
+    price_eur: 62.5
+    source_url: https://example.com/search/1

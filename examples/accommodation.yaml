@@ -1,0 +1,16 @@
+# Fake example data. The preferred place is the family house: we only travel to its
+# town when it is free. Otherwise the planner uses an alternative, and Martin can stay alone
+# there for up to solo_max_days (see constraints.yaml).
+accommodation:
+  - name: La Suite Elena (example)
+    location: Faenza
+    preferred: true
+    price_per_night_eur: 90
+    available:
+      - {start: 2027-01-20, end: 2027-02-15}
+  - name: Alternative flat (example)
+    location: Faenza
+    preferred: false
+    price_per_night_eur: 75
+    available:
+      - {start: 2027-01-10, end: 2027-06-30}
