@@ -133,7 +133,7 @@ footer { color: var(--muted); font-size: 0.8rem; margin-top: 24px; }
     <h2 style="margin-top:8px">{{ rec_scenario.title }}{% if rec_scenario.label %} ({{ rec_scenario.label }}){% endif %},
       then {{ recommended.start.strftime("%a %d %b") }} to {{ recommended.end.strftime("%a %d %b") }}</h2>
     <p class="sub">{{ recommended.nights }} nights. {{ recommended.mode }}.
-      {% if recommended.family_together %}Family together at {{ house }} the whole stay.{% endif %}{{ " " }}
+      {{ recommended.family_text }}{{ " " }}
       {%- if recommended.open_flights %}{{ recommended.open_flights }} flight(s) still to check live.{% endif %}</p>
   </section>
   {% endif %}

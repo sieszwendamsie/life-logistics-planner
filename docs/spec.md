@@ -71,6 +71,10 @@ Personal data stays **out of git**. Real files live in `data/` (gitignored).
       Bergamo, Florence, ...).
    3. Wrocław, Warsaw Chopin or Berlin (not Modlin) to Bologna.
    4. If none of these exist, ask Claude for an alternative route.
+   Paula and Basia prefer weekend flights leaving 10:00–18:00; their flight
+   day may move up to 4 days into the stay to get one. Avoid flying on long
+   weekends in Poland or Italy (dearer), and prefer being in Poland on public
+   holidays. These are soft rules: cons in the report, ranked after timing.
    Car: for long stays with no other travel plans nearby, Martin drives
    Poznań to Faenza and Paula and Basia fly. This is preferred when allowed.
 5. **Compare.** `planner report` combines windows, stays and transport into
@@ -126,5 +130,11 @@ Each task is one small branch and pull request, in this order.
     must/pref/flex). Martin's #PL/#UK must days block a stay, his #IT must days
     act like office days, Paula's or Basia's #PL/#UK must days shorten the
     family's part of the stay, and #pref days show up as cons.
+
+13. **Holidays and Work calendar.** Done: `holidays` (PL and IT), `shutdown`
+    and `leave` in `constraints.yaml`, imported from the Work calendar and
+    Holidays in Poland; long weekends, family flight preferences.
+14. **Holiday proposals.** The planner proposes leave dates from La Suite
+    availability and PL/IT public holidays. Rules to agree with Martin first.
 
 Done when: Martin plans one real stay with it in about 15 minutes of review.

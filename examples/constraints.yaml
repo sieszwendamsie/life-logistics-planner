@@ -49,6 +49,20 @@ travel:
     drive_hours: 13
     min_stay_days: 21
     clear_days: 7
+  # Paula and Basia: weekend flights between 10:00 and 18:00 preferred. Their flight
+  # day can move up to shift_days into the stay to get there. Soft rules.
+  family_flights: {weekend: true, earliest: "10:00", latest: "18:00", shift_days: 4}
+  # Try not to fly on long weekends in Poland or Italy (dearer). Soft rule.
+  avoid_long_weekends: true
+
+# Public holidays (Martin prefers to be in Poland on them; soft rule).
+holidays:
+  - {day: 2027-03-29, country: PL, name: Easter Monday}
+  - {day: 2027-04-25, country: IT, name: Liberation Day}
+# Office closed (#shutdown) and Martin's own leave (#holiday, blocks a work stay).
+shutdown:
+  - {start: 2027-08-13, end: 2027-08-22}
+leave: []
 
 # 3-way trip: uncomment when the stay you are planning ends by flying on to another
 # country (for example the UK) and then home from there. The car is not used then.
