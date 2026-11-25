@@ -119,7 +119,7 @@ def test_stays_follow_the_rules() -> None:
     for a, b in zip(stays, stays[1:], strict=False):
         assert a.end <= b.start
     for st in stays[1:]:
-        assert 14 <= st.nights <= 21
+        assert r.plan.min_stay_nights <= st.nights <= r.plan.max_stay_nights
         assert c.day_off(st.start) and c.day_off(st.end)
         assert st.blocked_nights <= c.solo_max_days
         for h in r.holidays:
