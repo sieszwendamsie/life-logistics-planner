@@ -104,6 +104,8 @@ li { margin: 2px 0; }
 .legs li { display: grid; grid-template-columns: 82px 1fr; gap: 6px; padding: 3px 0;
   border-top: 1px solid var(--line); }
 .st-open { color: var(--open); font-weight: 600; }
+.opt.unchecked { border-style: dashed; opacity: 0.75; }
+.warn { margin: 0 0 8px; color: var(--open); font-weight: 600; font-size: 0.85rem; }
 .st-checked { color: var(--ok); }
 details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
 footer { color: var(--muted); font-size: 0.8rem; margin-top: 24px; }
@@ -140,7 +142,7 @@ footer { color: var(--muted); font-size: 0.8rem; margin-top: 24px; }
 
   <section class="card">
     <h2>Compare</h2>
-    <p class="sub">Best option for each possible day back. Timing first, cost last.</p>
+    <p class="sub">Best option with live-checked flights for each case. Timing first, cost last.</p>
     <div class="table-wrap">
       <table>
         <thead><tr>
@@ -219,7 +221,8 @@ footer { color: var(--muted); font-size: 0.8rem; margin-top: 24px; }
 
     <div class="opts">
       {% for o in s.options %}
-      <article class="opt{{ ' rec' if o.recommended }}">
+      <article class="opt{{ ' rec' if o.recommended }}{{ ' unchecked' if o.open_flights }}">
+        {% if o.open_flights %}<p class="warn">Not a proposal yet: {{ o.open_flights }} flight(s) not checked live.</p>{% endif %}
         <h3>Option {{ o.letter }}: {{ o.start.strftime("%a %d %b") }} to {{ o.end.strftime("%a %d %b") }}
           {% if o.recommended %}<span class="badge">Recommended</span>{% endif %}</h3>
         <div class="facts">
