@@ -315,6 +315,8 @@ def _soft_cons(
                     f"Paula and Basia's flight leaves at {leg.choice.depart:%H:%M}, "
                     f"outside {window}"
                 )
+        if leg.who in ("Martin", "everyone") and not c.day_off(leg.day):
+            cons.append(f"Martin flies on a working day ({leg.day:%a %d %b}): unpaid hours")
         if leg.day in peaks:
             lw = peaks[leg.day]
             cons.append(

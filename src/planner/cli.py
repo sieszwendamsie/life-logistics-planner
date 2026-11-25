@@ -14,7 +14,7 @@ from pathlib import Path
 from planner import __version__
 from planner.loaders import load_accommodation, load_constraints, load_options
 from planner.options import Option, build_options, shortlist
-from planner.report import render, scenario, write
+from planner.report import parse_variant, render, scenario, write
 from planner.windows import find_windows
 
 DEFAULT_CONSTRAINTS = Path("data/constraints.yaml")
@@ -69,6 +69,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="a possible day back in Poznań, e.g. 2027-01-02='FR 2194 12:00'. Repeat it.",
     )
     scen.add_argument("--top", type=int, default=3, help="options to show per scenario")
+    scen.add_argument(
+        "--variant",
+        action="append",
+        default=[],
+        metavar="LABEL:FIELD=VALUE,...",
+        help="also try each day back with changed rules, e.g. 'Drive 31 Jan:solo_max_days=9'",
+    )
 
     rep = sub.add_parser("report", help="write the options and scenarios as an HTML page")
     for name, default in (
@@ -87,6 +94,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="a possible day back in Poznań (repeat it). Default: last_return.",
     )
     rep.add_argument("--top", type=int, default=3, help="options per scenario")
+    rep.add_argument(
+        "--variant",
+        action="append",
+        default=[],
+        metavar="LABEL:FIELD=VALUE,...",
+        help="also try each day back with changed rules, e.g. 'Drive 31 Jan:solo_max_days=9'",
+    )
     rep.add_argument("--out", type=Path, default=Path("out/report.html"), help="output file")
     return parser
 
@@ -169,6 +183,19 @@ def _parse_back(item: str) -> tuple[date, str]:
     return date.fromisoformat(day_text), name
 
 
+def _cases(
+    backs: list[str], variants: list[str], default: date | None = None
+) -> list[tuple[date | None, str, dict[str, object]]]:
+    """Every day back combined with every rule variant (or the rules as they are)."""
+    days = [_parse_back(item) for item in backs] or [(default, "")]
+    rules = [parse_variant(v) for v in variants] or [("", {})]
+    return [
+        (back, " · ".join(x for x in (name, label) if x), changes)
+        for back, name in days
+        for label, changes in rules
+    ]
+
+
 def _cmd_scenarios(args: argparse.Namespace) -> int:
     for path in (args.constraints, args.accommodation, args.transport):
         if not path.exists():
@@ -177,9 +204,8 @@ def _cmd_scenarios(args: argparse.Namespace) -> int:
     base = load_constraints(args.constraints)
     accommodation = load_accommodation(args.accommodation)
     transport = load_options(args.transport)
-    for item in args.back:
-        back, name = _parse_back(item)
-        s = scenario(base, accommodation, transport, back, name, args.top)
+    for back, name, changes in _cases(args.back, args.variant):
+        s = scenario(base, accommodation, transport, back, name, args.top, changes)
         title = f"Back in Poznań {back:%a %d %b %Y}" + (f" ({name})" if name else "")
         print("=" * len(title))
         print(title)
@@ -202,9 +228,9 @@ def _cmd_report(args: argparse.Namespace) -> int:
     base = load_constraints(args.constraints)
     accommodation = load_accommodation(args.accommodation)
     transport = load_options(args.transport)
-    backs = [_parse_back(item) for item in args.back] or [(base.last_return, "")]
     scenarios = [
-        scenario(base, accommodation, transport, back, name, args.top) for back, name in backs
+        scenario(base, accommodation, transport, back, name, args.top, changes)
+        for back, name, changes in _cases(args.back, args.variant, base.last_return)
     ]
     path = write(render(scenarios, base, accommodation), args.out)
     print(f"Wrote {path}")
