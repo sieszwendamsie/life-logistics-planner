@@ -290,3 +290,8 @@ def test_cli_scenarios_compares_return_dates(capsys: pytest.CaptureFixture[str])
     assert "Back in Poznań Sun 27 Dec 2026 (Flight A)" in out
     assert "Back in Poznań Sun 03 Jan 2027" in out
     assert "Next stay can start Sun 24 Jan to Sun 31 Jan." in out
+
+
+def test_unchecked_flight_is_a_con() -> None:
+    [o] = build_options(CONSTRAINTS, PLACES, JOURNEYS, [w("2027-02-01", "2027-02-22")])
+    assert any("not checked live yet" in c for c in o.cons)

@@ -56,10 +56,12 @@ Booked trips:
 Read tags from the event description (and title, if Martin put them there):
 
 - **Where:** `#PL` `#IT` `#UK` `#any`
-- **Who:** `#Martin` `#Paula` `#Basia` `#all` (`#all` = all three)
+- **Who:** `#Martin` `#Paula` `#Basia` `#girls` `#all` (`#girls` = Paula and Basia,
+  `#all` = all three)
 - **How fixed:** `#must` (default) `#pref` `#flex`
 
 Rules:
+- Tags are not case-sensitive: `#paula` is the same as `#Paula`.
 - **Where, untagged:** use the Location field (an address in Poznań = `PL`, in
   Italy = `IT`). With no tag and no location, ask.
 - **Who, untagged:** always ask Martin. Do not assume. Ask in one message,

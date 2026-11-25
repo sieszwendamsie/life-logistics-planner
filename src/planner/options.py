@@ -300,6 +300,11 @@ def build_options(
                     )
                 if leg.choice is not None:
                     cost += leg.choice.price_eur
+                    if leg.choice.checked_on is None:
+                        cons.append(
+                            f"{leg.choice.carrier} {leg.choice.id} on {leg.day} not checked "
+                            "live yet"
+                        )
 
             if c.onward is not None:
                 pros.append(f"Continues to {c.onward.name} for {c.onward.nights} nights, then home")

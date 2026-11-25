@@ -205,6 +205,9 @@ class TransportOption(BaseModel):
     arrive: datetime
     price_eur: float = Field(ge=0)
     source_url: str | None = None
+    # When this was seen in a live search (airline site or app, or Momondo).
+    # Empty means not verified: the planner shows it as a con.
+    checked_on: date | None = None
 
     @model_validator(mode="after")
     def _arrives_after_departure(self) -> "TransportOption":
