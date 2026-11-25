@@ -4,7 +4,7 @@
 /* Layout: one column; a wall-planner strip of 12 months up top, then the decisions as tables. */
 :root {
   --bg: #f6f7f4; --surface: #ffffff; --ink: #1d2320; --muted: #5b645f; --line: #dde1dc;
-  --home: #dfe5ea; --stay: #3f8f6b; --solo: #e0a23a; --holiday: #7a6fc4; --shut: #9aa19c;
+  --home: #dfe5ea; --home-we: #b9c3cc; --we-band: #e9ece6; --stay: #3f8f6b; --solo: #e0a23a; --holiday: #7a6fc4; --shut: #9aa19c;
   --it: #c0392b; --pl: #2f5fa7; --on-solo: #1d2320; --accent: #2d6a4f; --pick: rgba(63, 143, 107, 0.12);
   --font-head: "Space Grotesk", system-ui, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -12,14 +12,14 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #141816; --surface: #1c211f; --ink: #e6e9e6; --muted: #a0a9a4; --line: #313834;
-    --home: #2c3540; --stay: #4fa881; --solo: #e6b04f; --holiday: #988de0; --shut: #5f6762;
+    --home: #2c3540; --home-we: #46525f; --we-band: #262c29; --stay: #4fa881; --solo: #e6b04f; --holiday: #988de0; --shut: #5f6762;
     --it: #ec7a6c; --pl: #7ea6e6; --accent: #7cc5a1; --pick: rgba(79, 168, 129, 0.16);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #141816; --surface: #1c211f; --ink: #e6e9e6; --muted: #a0a9a4; --line: #313834;
-  --home: #2c3540; --stay: #4fa881; --solo: #e6b04f; --holiday: #988de0; --shut: #5f6762;
+  --home: #2c3540; --home-we: #46525f; --we-band: #262c29; --stay: #4fa881; --solo: #e6b04f; --holiday: #988de0; --shut: #5f6762;
   --it: #ec7a6c; --pl: #7ea6e6; --accent: #7cc5a1; --pick: rgba(79, 168, 129, 0.16);
   color-scheme: dark;
 }
@@ -49,7 +49,11 @@ section { display: grid; gap: 12px; min-width: 0; }
 .legend .ring::before { background: transparent; box-shadow: inset 0 0 0 2px var(--c); }
 .legend .dot::before { width: 6px; height: 6px; border-radius: 50%; vertical-align: 1px; }
 .wall { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
-.month { display: grid; grid-template-columns: 40px repeat(31, 24px); gap: 2px; align-items: center; }
+.month { display: grid; grid-template-columns: 40px repeat(37, 24px); gap: 2px; align-items: center; }
+.month.head div { font-size: 0.68rem; font-weight: 600; color: var(--muted); text-align: center; height: 20px; line-height: 20px; }
+.month.head .wkd { color: var(--ink); background: var(--we-band); border-radius: 3px 3px 0 0; }
+.gap { height: 24px; }
+.gap.wkd { background: var(--we-band); border-radius: 3px; }
 .month + .month { margin-top: 2px; }
 .month .m { font-size: 0.8rem; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
 .d {
@@ -57,6 +61,11 @@ section { display: grid; gap: 12px; min-width: 0; }
   text-align: center; font-variant-numeric: tabular-nums; color: var(--ink);
 }
 .d.we { font-weight: 700; }
+.home.we { background: var(--home-we); }
+.d.we::after {
+  content: ""; position: absolute; left: 3px; right: 3px; bottom: 2px; height: 2px;
+  border-radius: 1px; background: currentColor; opacity: 0.55;
+}
 .d.off { box-shadow: inset 0 0 0 2px var(--holiday); }
 .home { background: var(--home); }
 .stay { background: var(--stay); color: var(--surface); }
@@ -105,16 +114,21 @@ ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
       <span class="dot" style="--c: var(--pl)">Polish holiday</span>
     </div>
     <div class="wall" role="img" aria-label="Calendar of {{ r.plan.year }} coloured by where you are">
-      {% for name, cells in months %}
+      <div class="month head" aria-hidden="true">
+        <div></div>
+        {% for letter, wkd in weekdays %}<div class="{{ 'wkd' if wkd }}">{{ letter }}</div>{% endfor %}
+      </div>
+      {% for name, offset, cells in months %}
       <div class="month">
         <div class="m">{{ name }}</div>
+        {% for i in range(offset) %}<div class="gap{{ ' wkd' if i >= 5 }}"></div>{% endfor %}
         {% for cell in cells %}
         <div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}{% if cell.off %} off{% endif %}" title="{{ cell.title }}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}</div>
         {% endfor %}
       </div>
       {% endfor %}
     </div>
-    <p class="note">Bold numbers are weekends. Hover a day for details.</p>
+    <p class="note">Each column is one weekday, so weekends line up in the two shaded columns. Hover a day for details.</p>
   </section>
 
   <section>
