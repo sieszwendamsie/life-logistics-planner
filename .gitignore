@@ -26,3 +26,6 @@ node_modules/
 # Exports and scratch output
 /out/
 /tmp/
+
+# Personal planning data and generated reports
+/data/
