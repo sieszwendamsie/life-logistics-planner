@@ -4,7 +4,7 @@
 /* Layout: one column; a wall-planner strip of 12 months up top, then the decisions as tables. */
 :root {
   --bg: #f6f7f4; --surface: #ffffff; --ink: #1d2320; --muted: #5b645f; --line: #dde1dc;
-  --home: #dfe5ea; --home-we: #b9c3cc; --stay: #3f8f6b; --solo: #e0a23a; --holiday: #7a6fc4; --shut: #9aa19c;
+  --home: #dfe5ea; --home-we: #b9c3cc; --we-ring: #d23b3b; --stay: #3f8f6b; --solo: #e0a23a; --holiday: #7a6fc4; --shut: #9aa19c;
   --it: #c0392b; --pl: #2f5fa7; --on-solo: #1d2320; --accent: #2d6a4f; --pick: rgba(63, 143, 107, 0.12);
   --font-head: "Space Grotesk", system-ui, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -12,14 +12,14 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #141816; --surface: #1c211f; --ink: #e6e9e6; --muted: #a0a9a4; --line: #313834;
-    --home: #2c3540; --home-we: #46525f; --stay: #4fa881; --solo: #e6b04f; --holiday: #988de0; --shut: #5f6762;
+    --home: #2c3540; --home-we: #46525f; --we-ring: #f06a6a; --stay: #4fa881; --solo: #e6b04f; --holiday: #988de0; --shut: #5f6762;
     --it: #ec7a6c; --pl: #7ea6e6; --accent: #7cc5a1; --pick: rgba(79, 168, 129, 0.16);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #141816; --surface: #1c211f; --ink: #e6e9e6; --muted: #a0a9a4; --line: #313834;
-  --home: #2c3540; --home-we: #46525f; --stay: #4fa881; --solo: #e6b04f; --holiday: #988de0; --shut: #5f6762;
+  --home: #2c3540; --home-we: #46525f; --we-ring: #f06a6a; --stay: #4fa881; --solo: #e6b04f; --holiday: #988de0; --shut: #5f6762;
   --it: #ec7a6c; --pl: #7ea6e6; --accent: #7cc5a1; --pick: rgba(79, 168, 129, 0.16);
   color-scheme: dark;
 }
@@ -63,6 +63,8 @@ section { display: grid; gap: 12px; min-width: 0; }
   border-radius: 1px; background: currentColor; opacity: 0.55;
 }
 .d.off { box-shadow: inset 0 0 0 2px var(--holiday); }
+.d.we { box-shadow: inset 0 0 0 2px var(--we-ring); }
+.d.we.off { box-shadow: inset 0 0 0 2px var(--we-ring), inset 0 0 0 4px var(--holiday); }
 .home { background: var(--home); }
 .stay { background: var(--stay); color: var(--surface); }
 .solo { background: var(--solo); color: var(--on-solo); }
@@ -119,7 +121,7 @@ ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
       </div>
       {% endfor %}
     </div>
-    <p class="note">Weekends are bold and underlined, and darker when you're in Poznań. Hover a day for details.</p>
+    <p class="note">Weekends have a red border, and are darker when you're in Poznań. Hover a day for details.</p>
   </section>
 
   <section>
