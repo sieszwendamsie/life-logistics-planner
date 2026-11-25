@@ -30,7 +30,9 @@ def test_view_has_timeline_rows_inside_axis_and_one_recommendation() -> None:
     views = build_view(scenarios, c, acc)
     options = [o for v in views for o in v.options]
     assert options, "examples should give at least one option"
-    assert sum(o.recommended for o in options) == 1
+    assert sum(o.recommended for o in options) <= 1
+    # Only options whose flights were all checked live can be recommended.
+    assert all(not o.open_flights for o in options if o.recommended)
     for o in options:
         assert [r.who for r in o.rows] == ["Martin", "Paula + Basia"]
         for r in o.rows:
@@ -73,3 +75,12 @@ def test_variant_changes_rules_for_one_scenario() -> None:
     c, acc, tr = _data()
     s = scenario(c, acc, tr, None, "x", changes={"solo_max_days": 2})
     assert all(o.solo_nights <= 2 for o in s.options)
+
+
+def test_unchecked_flights_are_never_recommended() -> None:
+    c, acc, tr = _data()
+    unchecked = tr.model_copy(
+        update={"options": [o.model_copy(update={"checked_on": None}) for o in tr.options]}
+    )
+    views = build_view([scenario(c, acc, unchecked, None)], c, acc)
+    assert not any(o.recommended for v in views for o in v.options)

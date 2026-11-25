@@ -47,6 +47,11 @@ and close it when done. Decline non-essential cookies.
 - Momondo to see other airlines on the route, direct only:
   `https://www.momondo.com/flight-search/XXX-YYY/YYYY-MM-DD?sort=bestflight_a&fs=stops=0`
 
+Momondo does not always list Ryanair. For every route, also open the Ryanair page
+directly (Poznań, Wrocław, Warsaw Chopin and Berlin to the Italian airports and
+back), even when Momondo shows nothing. Each Ryanair page shows five days around
+the date: note which days have flights.
+
 Read the page text. Note for each direct flight: flight number, departure and
 arrival time (local), the basic fare per person, and seats-left warnings.
 

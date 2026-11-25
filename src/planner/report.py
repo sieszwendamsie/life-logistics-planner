@@ -254,6 +254,7 @@ def build_view(
 ) -> list[ScenarioView]:
     house = next(a for a in accommodation.accommodation if a.preferred)
     views: list[ScenarioView] = []
+    best_of: list[tuple[ScenarioView, Option]] = []
     for i, s in enumerate(scenarios, start=1):
         ends = [max([o.window.end, *(leg.day for leg in o.legs)]) for o in s.options] or [
             s.latest or c.horizon.end
@@ -322,7 +323,12 @@ def build_view(
                         if not x.startswith("No direct flight") and "price per night" not in x
                     ],
                     rows=rows,
-                    open_flights=len(o.missing_legs),
+                    # Flights not found yet, or recorded without a live check.
+                    open_flights=sum(
+                        leg.mode == "flight"
+                        and (leg.choice is None or leg.choice.checked_on is None)
+                        for leg in o.legs
+                    ),
                     family_text=(
                         f"Paula and Basia at {o.house.name} "
                         f"{(o.family_start or o.house_start):%d %b} to "
@@ -330,13 +336,19 @@ def build_view(
                     ),
                 )
             )
-        if view.options:
+        # Only options whose flights were all checked live can be proposed.
+        checked = [
+            (ov, o) for ov, o in zip(view.options, s.options, strict=False) if not ov.open_flights
+        ]
+        if checked:
+            view.best = checked[0][0]
+            best_of.append((view, checked[0][1]))
+        elif view.options:
             view.best = view.options[0]
         views.append(view)
-    # Recommend the scenario whose best option ranks best (timing first, cost last).
-    ranked = [(v, s.options[0]) for v, s in zip(views, scenarios, strict=True) if s.options]
-    if ranked:
-        top = min(ranked, key=lambda vo: _option_rank(vo[1]))[0]
+    # Recommend the scenario whose best checked option ranks best (timing first).
+    if best_of:
+        top = min(best_of, key=lambda vo: _option_rank(vo[1]))[0]
         if top.best:
             top.best.recommended = True
     return views
