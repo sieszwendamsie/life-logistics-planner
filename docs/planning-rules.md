@@ -35,6 +35,41 @@ Real values (home address, prices) live in the gitignored `data/` files.
   - The winter shutdown is usually busy: add at most 1 to 2 extra days to it.
 - **Avoid peak prices** where possible: school-holiday peaks and long weekends.
 - **Where**: not part of the plan yet.
+- **How the planner picks them** (`planner year`, settings under `year_plan`):
+  - A holiday is a run of days off that starts right after a working day and ends
+    right before one, so no free day next to it is wasted. Its cost is the paid
+    days inside it.
+  - Ranking: fewest paid days, then the most days off for them, then the fewest
+    school-holiday days (`year_plan.peaks`, from the official school calendars).
+  - Long holiday: 28 to 31 days that contain the whole summer shutdown.
+  - Two-week holiday: 14 to 17 days, at least 6 weeks from the long one, not on
+    an office period, a decided stay or a shutdown. Martin prefers it in March or
+    April (`second_holiday_months`); for 2027 around Basia's birthday
+    (`second_holiday_start`).
+  - Long weekends: for each Italian holiday on a weekday, the free version and
+    the versions with 1 or 2 bridge days.
+  - Christmas: the shutdown plus at most 2 paid days.
+
+### Year plan (draft rhythm)
+- **Remote work 55 to 65% of working days** (Martin, 25 Nov 2026): the rest is
+  office time in Faenza. Working days leave out weekends, Italian holidays,
+  shutdowns and his holidays (`year_plan.remote_share`).
+- Stays in Faenza of 14 to 21 nights, with 28 to 42 nights in Poznań between
+  them by default. The planner also tries other stay and gap lengths and keeps
+  the one with the remote share in range and the **fewest trips**: Martin prefers
+  fewer, longer stays (3 to 4 weeks) over many 2-week ones. Holidays don't count as
+  Poznań time.
+- Later: workations (remote work from the family home or elsewhere) outside the
+  Faenza stays. Martin will give the rules for family visits.
+- Every stay starts and ends on a day off, so Martin can drive or fly without
+  losing pay. No stay touches a holiday, a shutdown or a day he must be in Poland.
+- Required office periods lie fully inside a stay. Decided stays are fixed
+  (`year_plan.fixed_stays`).
+- La Suite blocked for more than 7 nights of a stay rules it out. Fewer blocked
+  nights, Polish holidays away from home and travel on long weekends or in
+  school holidays all count against a stay.
+- It is a rhythm, not a booking plan. Each stay is planned with live checks a few
+  weeks ahead (steps below).
 
 ### Travel
 - **Timing first, cost second.** For longer stays Martin drives (about 13 h) and
@@ -95,6 +130,9 @@ Real values (home address, prices) live in the gitignored `data/` files.
 
 1. **Calendar**: run the `import-calendar` skill. This only needs doing when the
    calendars have changed.
+   - Once a year (or when holidays or La Suite dates change), run
+     `uv run planner year --out out/year.html` for the yearly rhythm and holiday
+     proposals. Then plan each stay from step 2.
 2. **Dates**: `uv run planner report --back DATE ...` shows the windows, options
    and which legs are still open.
 3. **Time limits**: `uv run planner routes --month YYYY-MM` lists, per route,
