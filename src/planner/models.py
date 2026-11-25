@@ -241,6 +241,48 @@ class Holiday(BaseModel):
     name: str = ""
 
 
+class Peak(DateRange):
+    """A school-holiday period: prices are higher, so holidays and family flights avoid it."""
+
+    name: str = ""
+    source: str | None = None
+
+
+class FixedStay(DateRange):
+    """A stay in Faenza that is already decided (or being decided elsewhere)."""
+
+    note: str = ""
+
+
+class YearPlan(BaseModel):
+    """Settings for `planner year`: the draft plan of a whole year.
+
+    Stays and gaps are counted in nights. Holidays are runs of days off that start
+    the day after a working day and end the day before one, so they always start
+    and end on free days (weekends, Italian holidays, shutdown).
+    """
+
+    year: int
+    # First day back in Poznań after the last trip of the previous year.
+    start: date
+    min_stay_nights: int = Field(default=14, ge=1)
+    max_stay_nights: int = Field(default=21, ge=1)
+    # Nights in Poznań between two stays (holiday days don't count).
+    min_home_nights: int = Field(default=28, ge=0)
+    max_home_nights: int = Field(default=42, ge=0)
+    fixed_stays: list[FixedStay] = Field(default_factory=list)
+    # One long holiday around the summer shutdown, one shorter one, winter extras.
+    long_holiday_days: tuple[int, int] = (28, 31)
+    second_holiday_days: tuple[int, int] = (14, 17)
+    # The two big holidays should be at least this many days apart.
+    holiday_gap_days: int = Field(default=42, ge=0)
+    winter_extra_days: int = Field(default=2, ge=0)
+    # Pick these holidays (by start date) instead of the best-ranked ones.
+    long_holiday_start: date | None = None
+    second_holiday_start: date | None = None
+    peaks: list[Peak] = Field(default_factory=list)
+
+
 class Constraints(BaseModel):
     """Contents of constraints.yaml: the rules and fixed dates to plan around."""
 
@@ -268,6 +310,8 @@ class Constraints(BaseModel):
     shutdown: list[DateRange] = Field(default_factory=list)
     # Martin's own leave (#holiday). No work stay is planned over these days.
     leave: list[DateRange] = Field(default_factory=list)
+    # The draft plan of a whole year (`planner year`).
+    year_plan: YearPlan | None = None
 
     def day_off(self, d: date) -> bool:
         """True if Martin does not work that day: weekend, Italian public holiday

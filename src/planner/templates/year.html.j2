@@ -1,0 +1,214 @@
+<title>{{ r.plan.year }} Year Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one column; a wall-planner strip of 12 months up top, then the decisions as tables. */
+:root {
+  --bg: #f6f7f4; --surface: #ffffff; --ink: #1d2320; --muted: #5b645f; --line: #dde1dc;
+  --home: #dfe5ea; --stay: #3f8f6b; --solo: #e0a23a; --holiday: #7a6fc4; --shut: #9aa19c;
+  --it: #c0392b; --pl: #2f5fa7; --on-solo: #1d2320; --accent: #2d6a4f; --pick: rgba(63, 143, 107, 0.12);
+  --font-head: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141816; --surface: #1c211f; --ink: #e6e9e6; --muted: #a0a9a4; --line: #313834;
+    --home: #2c3540; --stay: #4fa881; --solo: #e6b04f; --holiday: #988de0; --shut: #5f6762;
+    --it: #ec7a6c; --pl: #7ea6e6; --accent: #7cc5a1; --pick: rgba(79, 168, 129, 0.16);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141816; --surface: #1c211f; --ink: #e6e9e6; --muted: #a0a9a4; --line: #313834;
+  --home: #2c3540; --stay: #4fa881; --solo: #e6b04f; --holiday: #988de0; --shut: #5f6762;
+  --it: #ec7a6c; --pl: #7ea6e6; --accent: #7cc5a1; --pick: rgba(79, 168, 129, 0.16);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font-body); }
+main {
+  max-width: 1060px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px;
+}
+h1, h2 { font-family: var(--font-head); text-wrap: balance; margin: 0; }
+h1 { font-size: 1.9rem; line-height: 1.15; }
+h2 { font-size: 1.25rem; }
+p { margin: 0; max-width: 68ch; }
+.sub { color: var(--muted); }
+section { display: grid; gap: 12px; min-width: 0; }
+.totals { display: flex; flex-wrap: wrap; gap: 8px 28px; }
+.totals div { display: grid; }
+.totals b { font-family: var(--font-head); font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.totals span { color: var(--muted); font-size: 0.85rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.85rem; color: var(--muted); }
+.legend span::before {
+  content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px;
+  margin-right: 6px; vertical-align: -2px; background: var(--c);
+}
+.legend .dot::before { width: 6px; height: 6px; border-radius: 50%; vertical-align: 1px; }
+.wall { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.month { display: grid; grid-template-columns: 40px repeat(31, 24px); gap: 2px; align-items: center; }
+.month + .month { margin-top: 2px; }
+.month .m { font-size: 0.8rem; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+.d {
+  position: relative; height: 24px; border-radius: 3px; font-size: 0.66rem; line-height: 24px;
+  text-align: center; font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.d.we { font-weight: 700; }
+.home { background: var(--home); }
+.stay { background: var(--stay); color: var(--surface); }
+.solo { background: var(--solo); color: var(--on-solo); }
+.holiday { background: var(--holiday); color: var(--surface); }
+.shutdown { background: repeating-linear-gradient(135deg, var(--shut) 0 3px, var(--home) 3px 6px); }
+.d i { position: absolute; top: 2px; width: 5px; height: 5px; border-radius: 50%; }
+.d i.it { right: 2px; background: var(--it); }
+.d i.pl { left: 2px; background: var(--pl); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.pick td { background: var(--pick); }
+.pill { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--accent); color: var(--surface); }
+.note { color: var(--muted); font-size: 0.85rem; }
+ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap">
+<main>
+  <header style="display:grid; gap:8px">
+    <h1>{{ r.plan.year }}: where you are, and when you're off</h1>
+    <p class="sub">Draft rhythm for the whole year, built from your Work calendar, La Suite's blocked dates and your holiday rules. Nothing is booked or priced here: each stay gets its live flight check when it comes up.</p>
+  </header>
+
+  <section>
+    <div class="totals">
+      <div><b>{{ totals.stays }}</b><span>stays in Faenza</span></div>
+      <div><b>{{ totals.faenza }}</b><span>nights in Faenza</span></div>
+      <div><b>{{ totals.holiday }}</b><span>days of holiday</span></div>
+      <div><b>{{ totals.paid }}</b><span>paid days used for them</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The year at a glance</h2>
+    <div class="legend">
+      <span style="--c: var(--home)">Poznań</span>
+      <span style="--c: var(--stay)">Faenza</span>
+      <span style="--c: var(--solo)">Faenza, La Suite blocked (you alone)</span>
+      <span style="--c: var(--holiday)">Holiday</span>
+      <span style="--c: var(--shut)">Shutdown</span>
+      <span class="dot" style="--c: var(--it)">Italian holiday</span>
+      <span class="dot" style="--c: var(--pl)">Polish holiday</span>
+    </div>
+    <div class="wall" role="img" aria-label="Calendar of {{ r.plan.year }} coloured by where you are">
+      {% for name, cells in months %}
+      <div class="month">
+        <div class="m">{{ name }}</div>
+        {% for cell in cells %}
+        <div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}" title="{{ cell.title }}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}</div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    <p class="note">Bold numbers are weekends. Hover a day for details.</p>
+  </section>
+
+  <section>
+    <h2>Stays in Faenza</h2>
+    <div class="card table-wrap">
+      <table>
+        <thead><tr><th>Travel out</th><th>Travel home</th><th>Nights</th><th>Family</th><th>Watch out for</th></tr></thead>
+        <tbody>
+        {% for st in stays %}
+          <tr>
+            <td class="num">{{ st.start.strftime('%a %d %b') }}</td>
+            <td class="num">{{ st.end.strftime('%a %d %b') }}</td>
+            <td class="num">{{ st.nights }}</td>
+            <td>{% if st.blocked_nights %}{{ st.family_nights }} night{{ 's' if st.family_nights != 1 }} at La Suite; {{ st.blocked_nights }} night{{ 's' if st.blocked_nights != 1 }} it's blocked{% else %}Whole stay at La Suite{% endif %}</td>
+            <td>
+              {% if st.fixed %}<span class="pill">fixed</span> {{ st.note }}<br>{% endif %}
+              {% if st.office %}Required office days inside.<br>{% endif %}
+              {% if st.pl_holidays %}Polish holiday away from home: {{ st.pl_holidays | join(', ') }}.<br>{% endif %}
+              {% if st.peak_travel %}Travel on a long weekend: {{ st.peak_travel | join(', ') }}.<br>{% endif %}
+              {% if st.school_peak_travel %}Travel in school holidays: {{ st.school_peak_travel | join(', ') }}.{% endif %}
+              {% if not (st.fixed or st.office or st.pl_holidays or st.peak_travel or st.school_peak_travel) %}<span class="note">Nothing</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Holiday proposals</h2>
+    <p class="sub">A holiday costs only its working days. Weekends, Italian holidays and shutdowns are free; Polish holidays are normal paid days for you. The highlighted row is the one the plan above uses.</p>
+    <div class="card table-wrap">
+      <h3 style="margin:0">About 4 weeks, around the summer shutdown</h3>
+      <table>
+        <thead><tr><th>Dates</th><th>Days off</th><th>Paid days used</th><th>School holidays (prices)</th></tr></thead>
+        <tbody>
+        {% for b, pick in long %}
+          <tr class="{{ 'pick' if pick }}"><td class="num">{{ b.dates }}{% if pick %} <span class="pill">plan</span>{% endif %}</td><td class="num">{{ b.days }}</td><td class="num">{{ b.paid }}</td><td>{{ b.peaks or '—' }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card table-wrap">
+      <h3 style="margin:0">Two weeks, at least 6 weeks from the summer holiday</h3>
+      <table>
+        <thead><tr><th>Dates</th><th>Days off</th><th>Paid days used</th><th>Italian holiday inside</th><th>School holidays (prices)</th></tr></thead>
+        <tbody>
+        {% for b, pick in second %}
+          <tr class="{{ 'pick' if pick }}"><td class="num">{{ b.dates }}{% if pick %} <span class="pill">plan</span>{% endif %}</td><td class="num">{{ b.days }}</td><td class="num">{{ b.paid }}</td><td>{{ b.it or '—' }}</td><td>{{ b.peaks or '—' }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="grid2">
+      <div class="card table-wrap">
+        <h3 style="margin:0">Long weekends around Italian holidays</h3>
+        <table>
+          <thead><tr><th>Dates</th><th>Days</th><th>Paid</th><th>Holiday</th></tr></thead>
+          <tbody>
+          {% for b in weekends %}
+            <tr><td class="num">{{ b.dates }}</td><td class="num">{{ b.days }}</td><td class="num">{{ b.paid }}</td><td>{{ b.it }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card table-wrap">
+        <h3 style="margin:0">Christmas shutdown plus 1 or 2 days</h3>
+        <table>
+          <thead><tr><th>Dates</th><th>Days</th><th>Paid</th></tr></thead>
+          <tbody>
+          {% for b in winter %}
+            <tr><td class="num">{{ b.dates }}</td><td class="num">{{ b.days }}</td><td class="num">{{ b.paid }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>Questions for you</h2>
+      <ul>
+        {% for q in questions %}<li>{{ q }}</li>{% endfor %}
+        <li>Is about {{ totals.stays }} stays and {{ totals.faenza }} nights in Faenza right for {{ r.plan.year }}, or does work expect more or less office time?</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>What the plan assumes</h2>
+      <ul>
+        {% for a in assumptions %}<li>{{ a }}</li>{% endfor %}
+        <li>School holidays (higher prices): {% for p in r.plan.peaks %}{{ p.name }} {{ p.start.strftime('%d %b') }}–{{ p.end.strftime('%d %b') }}{{ ', ' if not loop.last }}{% endfor %}.</li>
+        <li>No flights, cars or prices are checked yet. They are checked live per stay, a few weeks ahead.</li>
+      </ul>
+    </div>
+  </section>
+</main>

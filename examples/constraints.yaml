@@ -109,6 +109,26 @@ shutdown:
   - {start: 2027-08-13, end: 2027-08-22}
 leave: []
 
+# Draft plan of a whole year (`planner year`). Nights, not days. Holidays are runs of
+# days off; only their working days cost pay (weekends, IT holidays, shutdown are free).
+year_plan:
+  year: 2027
+  start: 2027-01-06          # back in Poznań after the last trip
+  min_stay_nights: 14
+  max_stay_nights: 21
+  min_home_nights: 28        # Poznań between stays; holidays don't count
+  max_home_nights: 42
+  long_holiday_days: [28, 31]    # about 4 weeks around the summer shutdown
+  second_holiday_days: [14, 17]  # one 2-week holiday
+  holiday_gap_days: 42           # the two holidays at least 6 weeks apart
+  winter_extra_days: 2           # Christmas shutdown is busy: at most 2 more days
+  # long_holiday_start: 2027-07-31   # pin a holiday instead of the best-ranked one
+  fixed_stays:
+    - {start: 2027-01-31, end: 2027-02-21, note: "office stay (example)"}
+  # School holidays: prices are higher. Check the official calendars each year.
+  peaks:
+    - {start: 2027-06-26, end: 2027-08-31, name: PL school summer (example)}
+
 # 3-way trip: uncomment when the stay you are planning ends by flying on to another
 # country (for example the UK) and then home from there. The car is not used then.
 # Journeys use direction: onward (Italy to UK) and direction: home (UK to Poland).
