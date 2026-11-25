@@ -16,6 +16,7 @@ Rules (see docs/spec.md, steps 3 and 5):
 - Ranking is about timing first, cost last.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Literal
@@ -324,7 +325,13 @@ def _flight(
 
 
 def _family_flight(
-    transport: OptionsFile, travel: Travel, d: Direction, day: date, lo: date, hi: date
+    transport: OptionsFile,
+    travel: Travel,
+    d: Direction,
+    day: date,
+    lo: date,
+    hi: date,
+    allowed: Callable[[date], bool] = lambda _: True,
 ) -> Leg:
     """Paula and Basia's flight: the best day between lo and hi (both included).
 
@@ -335,7 +342,8 @@ def _family_flight(
     If no day has a flight, the leg stays open on the best day to search.
     """
     prefs = travel.family_flights
-    candidates = [lo + timedelta(days=i) for i in range((hi - lo).days + 1)] or [day]
+    candidates = [lo + timedelta(days=i) for i in range((hi - lo).days + 1)]
+    candidates = [x for x in candidates if allowed(x)] or [day]
     best: tuple[tuple, Leg] | None = None
     for cand in candidates:
         leg = _flight(transport, travel, "family", d, cand)
@@ -358,6 +366,29 @@ def _family_flight(
     return best[1]
 
 
+def _bridge(
+    c: Constraints,
+    house: Accommodation,
+    family_blocks: list[tuple[date, date]],
+    w: Window,
+    hs: date,
+) -> int:
+    """Nights Paula and Basia may stay elsewhere before the house is free.
+
+    Only when the house itself is the reason (busy the night before `hs`) and
+    nobody needs them in Poland on those nights.
+    """
+    if hs <= w.start or _free(house, hs - timedelta(days=1), hs):
+        return 0
+    n = 0
+    for k in range(1, c.travel.family_flights.bridge_nights + 1):
+        night = hs - timedelta(days=k)
+        if night < w.start or any(s <= night < e for s, e in family_blocks):
+            break
+        n = k
+    return n
+
+
 def _car_allowed(c: Constraints, w: Window) -> bool:
     car = c.travel.car
     if car is None or c.onward is not None or w.days < car.min_stay_days:
@@ -373,15 +404,32 @@ def _price(place: Accommodation) -> float:
 
 
 def _legs(
-    c: Constraints, transport: OptionsFile, w: Window, hs: date, he: date, drive: bool
+    c: Constraints,
+    transport: OptionsFile,
+    w: Window,
+    hs: date,
+    he: date,
+    drive: bool,
+    bridge: int = 0,
 ) -> list[Leg]:
     travel = c.travel
     shift = timedelta(days=travel.family_flights.shift_days)
     last_out = max(hs, min(hs + shift, he - timedelta(days=1)))
     first_back = min(he, max(he - shift, hs + timedelta(days=1)))
 
+    # Up to `bridge` nights early, arriving on a day off, staying elsewhere first.
+    first_out = max(w.start, hs - timedelta(days=bridge))
+
     def family_out() -> Leg:
-        return _family_flight(transport, travel, "outbound", hs, hs, last_out)
+        return _family_flight(
+            transport,
+            travel,
+            "outbound",
+            hs,
+            first_out,
+            last_out,
+            lambda d: d >= hs or c.day_off(d),
+        )
 
     def family_back() -> Leg:
         return _family_flight(transport, travel, "return", he, first_back, he)
@@ -707,7 +755,8 @@ def build_options(
         hs, he = max(family_ranges, key=lambda r: r[1] - r[0])
         before, after = (hs - w.start).days, (w.end - he).days
         solo = before + after
-        if solo > c.solo_max_days:
+        bridge = _bridge(c, house, family_blocks, w, hs)
+        if solo - bridge > c.solo_max_days:
             continue
         if c.onward is not None:
             # Everyone flies on together, so the family must stay until the end.
@@ -732,7 +781,20 @@ def build_options(
 
         modes = [False] + [True] * _car_allowed(c, w)
         for drive in modes:
-            legs = _legs(c, transport, w, hs, he, drive)
+            legs = _legs(c, transport, w, hs, he, drive, bridge)
+            # Paula and Basia may come a few nights before the house is free.
+            fam_first = next(
+                (
+                    g.day
+                    for g in legs
+                    if g.who == "family" and g.direction == "outbound" and g.choice
+                ),
+                hs,
+            )
+            early = max(0, (hs - fam_first).days)
+            alone = solo - early
+            if alone > c.solo_max_days:
+                continue
             pros: list[str] = []
             cons: list[str] = []
 
@@ -752,6 +814,27 @@ def build_options(
                     add("Accommodation", elsewhere_nights * solo_place.price_per_night_eur)
 
             open_ground = 0
+            if early:
+                quotes = [
+                    (a, q)
+                    for a in alternatives
+                    for q in a.quotes
+                    if q.start == fam_first and q.end == hs and q.checked_on is not None
+                ]
+                text = (
+                    f"Paula and Basia come {early} night(s) before {house.name} is free "
+                    f"({fam_first:%a %d %b} to {hs:%a %d %b}), a short city break"
+                )
+                if quotes:
+                    a, q = min(quotes, key=lambda x: x[1].price_eur)
+                    add("Accommodation", q.price_eur)
+                    cons.append(
+                        f"{text}: {q.name or a.name}, €{q.price_eur:.0f} for "
+                        f"{q.guests or 'the family'} (checked {q.checked_on:%d %b}; in total)"
+                    )
+                else:
+                    open_ground += 1
+                    cons.append(f"{text}: stay not priced live yet")
             for leg in legs:
                 if leg.missing:
                     cons.append(
@@ -809,13 +892,13 @@ def build_options(
                 drive_cost = round_trip(car.costs, w.start, w.end)
                 add("Own car: fuel, tolls, vignettes", drive_cost.total_eur)
                 cons.append(drive_cost.text() + " (in total)")
-            if solo:
+            if alone:
                 where = []
                 if solo - elsewhere_nights:
                     where.append(f"{solo - elsewhere_nights} at {house.name}")
-                if solo_place is not None:
-                    where.append(f"{elsewhere_nights} at {solo_place.name}")
-                cons.append(f"Martin alone for {solo} nights ({', '.join(where)})")
+                if solo_place is not None and elsewhere_nights - early:
+                    where.append(f"{elsewhere_nights - early} at {solo_place.name}")
+                cons.append(f"Martin alone for {alone} nights ({', '.join(where)})")
             else:
                 pros.append(f"Family together at {house.name} for the whole stay")
             for fp in c.family:
@@ -889,7 +972,7 @@ def build_options(
                     hs,
                     he,
                     solo_place,
-                    solo,
+                    alone,
                     drive,
                     legs,
                     round(sum(costs.values()), 2),

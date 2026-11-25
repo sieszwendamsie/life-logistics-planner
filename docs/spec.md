@@ -78,6 +78,10 @@ Personal data stays **out of git**. Real files live in `data/` (gitignored).
    Maps time), so they need no bus or train. Then weekend flights first, the
    shortest door-to-door time, a departure between 10:00 and 18:00, and route
    choice. Their flight day may move up to 4 days into the stay to get one.
+   When the house is not free yet, they may instead come up to 3 nights
+   early on a day off (weekend or holiday) for a short city break elsewhere
+   (`family_flights.bridge_nights`), priced from a live quote under the
+   other place's `quotes:` in accommodation.yaml (Booking, Airbnb).
    Hire-car quotes record `pick_up` and `drop_off` airports and are only used
    when they match the flights. Avoid flying on long
    weekends in Poland or Italy (dearer), and prefer being in Poland on public

@@ -11,6 +11,7 @@ from planner.models import (
     CarCosts,
     Constraints,
     OptionsFile,
+    StayQuote,
     TransportOption,
 )
 from planner.options import Leg, build_options, shortlist
@@ -482,3 +483,52 @@ def test_family_flight_too_late_is_not_used() -> None:
     c = with_travel(travel={**TRAVEL, "car": None})
     [o] = build_options(c, PLACES, journeys, [w("2027-02-01", "2027-02-22")])
     assert o.legs[0].missing
+
+
+def test_family_comes_early_on_a_weekend_for_a_short_city_break() -> None:
+    # House free from Tue 9 Feb. Paula and Basia can fly Sun 7 Feb and stay two
+    # nights elsewhere, or Thu 11 Feb (a weekday). The weekend wins.
+    places = AccommodationFile.model_validate(
+        {
+            "accommodation": [
+                {
+                    "name": "House",
+                    "preferred": True,
+                    "price_per_night_eur": 100,
+                    "unavailable": [{"start": "2027-01-01", "end": "2027-02-09"}],
+                },
+                {"name": "Flat", "price_per_night_eur": 50},
+            ]
+        }
+    )
+
+    def noon(fid: str, d: str, orig: str, dest: str, day: str) -> dict:
+        return flight(fid, d, orig, dest, day) | {
+            "depart": f"{day}T12:00",
+            "arrive": f"{day}T14:00",
+        }
+
+    flights = [
+        noon("m", "outbound", "POZ", "BLQ", "2027-02-04"),
+        noon("sun", "outbound", "POZ", "BLQ", "2027-02-07"),
+        noon("thu", "outbound", "POZ", "BLQ", "2027-02-11"),
+        noon("r", "return", "BLQ", "POZ", "2027-02-22"),
+    ]
+    c = with_travel(travel={**TRAVEL, "car": None})
+    win = [w("2027-02-04", "2027-02-22")]
+    [o] = build_options(c, places, OptionsFile.model_validate({"options": flights}), win)
+    fam = next(g for g in o.legs if g.who == "family")
+    assert fam.choice.id == "sun"
+    assert o.solo_nights == 3  # Thu 4 to Sun 7
+    assert o.open_ground >= 1 and any("2 night(s) before House" in x for x in o.cons)
+    # With a live quote for those two nights, the price goes into the total.
+    quote = {
+        "start": "2027-02-07",
+        "end": "2027-02-09",
+        "price_eur": 139,
+        "checked_on": "2026-11-25",
+    }
+    places.accommodation[1].quotes = [StayQuote.model_validate(quote)]
+    [o2] = build_options(c, places, OptionsFile.model_validate({"options": flights}), win)
+    assert o2.open_ground == o.open_ground - 1
+    assert any("€139" in x for x in o2.cons)

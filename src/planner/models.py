@@ -139,6 +139,10 @@ class FamilyFlights(BaseModel):
     # Paula and Basia leave earlier or arrive later are never proposed.
     leave_home_after: time = time(5, 0)
     arrive_home_by: time = time(20, 0)
+    # Short stay before the house is free: Paula and Basia may arrive up to this
+    # many nights early, on a day off (weekend or holiday), and stay elsewhere
+    # (a city break). Priced from a live quote under `quotes:` in accommodation.yaml.
+    bridge_nights: int = Field(default=3, ge=0)
 
 
 class Ride(BaseModel):
@@ -300,6 +304,18 @@ class Constraints(BaseModel):
         ]
 
 
+class StayQuote(BaseModel):
+    """A live-checked price for one stay (Booking, Airbnb...), whole stay total."""
+
+    start: date  # check-in
+    end: date  # check-out
+    guests: str = ""  # e.g. "2 adults + infant"
+    name: str = ""  # the property found
+    price_eur: float = Field(ge=0)
+    source_url: str | None = None
+    checked_on: date | None = None
+
+
 class Accommodation(BaseModel):
     """One place to stay, with the dates it is free.
 
@@ -320,6 +336,7 @@ class Accommodation(BaseModel):
     price_per_night_eur: float | None = Field(default=None, ge=0)
     available: list[DateRange] = Field(default_factory=list)
     unavailable: list[DateRange] = Field(default_factory=list)
+    quotes: list[StayQuote] = Field(default_factory=list)
 
 
 class AccommodationFile(BaseModel):
