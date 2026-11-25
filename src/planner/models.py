@@ -270,8 +270,10 @@ class Constraints(BaseModel):
     leave: list[DateRange] = Field(default_factory=list)
 
     def day_off(self, d: date) -> bool:
-        """True if Martin does not work that day: weekend, holiday, shutdown, leave."""
-        if d.weekday() >= 5 or any(h.day == d for h in self.holidays):
+        """True if Martin does not work that day: weekend, Italian public holiday
+        (the office is closed), shutdown or leave. Polish public holidays are normal
+        working days for him (he is paid per hour), so they don't count."""
+        if d.weekday() >= 5 or any(h.day == d and h.country == "IT" for h in self.holidays):
             return True
         return any(r.start <= d <= r.end for r in [*self.shutdown, *self.leave])
 

@@ -22,6 +22,20 @@ Real values (home address, prices) live in the gitignored `data/` files.
   - Avoid flying on Polish or Italian long weekends, because prices are higher.
   - Be in Poland on public holidays.
 
+### Holidays (Martin, 25 Nov 2026)
+- **Days off that cost nothing**: weekends, Italian public holidays (the office is
+  closed) and shutdowns. Polish public holidays are normal paid working days for
+  Martin, so a day off on one costs pay like any other.
+- **Plan holidays around shutdowns and Italian holidays**, so that as few paid
+  days as possible are lost.
+- **Each year**:
+  - One long holiday of about 4 weeks, built around the summer shutdown.
+  - One 2-week holiday.
+  - Long weekends wherever an Italian holiday makes one cheap (bridge days).
+  - The winter shutdown is usually busy: add at most 1 to 2 extra days to it.
+- **Avoid peak prices** where possible: school-holiday peaks and long weekends.
+- **Where**: not part of the plan yet.
+
 ### Travel
 - **Timing first, cost second.** For longer stays Martin drives (about 13 h) and
   Paula and Basia fly. They never all drive together.
