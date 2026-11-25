@@ -93,7 +93,7 @@ def test_whole_stay_in_house_is_family_together_with_cheapest_flights() -> None:
     [o] = build_options(CONSTRAINTS, PLACES, JOURNEYS, [w("2027-02-01", "2027-02-22")])
     assert o.family_together
     assert [leg.choice.id for leg in o.legs if leg.choice] == ["o1", "r1"]
-    assert o.total_cost_eur == 21 * 100 + 3 * (40 + 60)  # price per person x 3
+    assert o.total_cost_eur == 21 * 100 + 2 * (40 + 60)  # 2 seats, Basia on Paula's lap
     assert o.travel_hours == 8  # each way: 1.5 h at the airport, 2 h flight, 0.5 h after
 
 
@@ -179,6 +179,8 @@ TRAVEL = {
     ],
     "transfer_hours": {"POZ": 0.5, "BLQ": 1, "BGY": 3},
     "car": {"drive_hours": 13, "min_stay_days": 21, "clear_days": 7, "days_off_only": False},
+    "infant_fee_eur": {"X": 25, "Y": 25},
+    "checked_bag_eur": {"X": 40, "Y": 40},
 }
 
 
@@ -272,9 +274,13 @@ def test_car_option_when_no_other_travel_nearby() -> None:
     fly = next(o for o in built if not o.martin_drives)
     drive_cost = round_trip(CarCosts(), date(2027, 2, 1), date(2027, 2, 22)).total_eur
     assert car[0].total_cost_eur == pytest.approx(
-        fly.total_cost_eur - 100 + drive_cost
+        # Martin's two seats are gone, and the luggage goes in the car: no 4 bags at €40.
+        fly.total_cost_eur - 100 - 4 * 40 + drive_cost
     )  # Martin drives, no seat
     assert any("Driving there and back" in x for x in car[0].cons)
+    # Basia on Paula's lap: infant fee each flight. Bags only when nobody drives.
+    assert car[0].costs["Infant fees"] == 2 * 25 and "Checked bags" not in car[0].costs
+    assert fly.costs["Checked bags"] == 2 * 2 * 40
 
 
 def test_ground_costs_only_from_live_checks() -> None:

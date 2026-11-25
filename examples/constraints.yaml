@@ -66,6 +66,12 @@ travel:
   # home (`ground:` kind transfer in options.yaml), leaving after 05:00 and arriving
   # 2 h before the flight. No lifts, no airport hotels.
   home_airports: [POZ]
+  # An infant on a lap pays the airline's infant fee per flight. Large bags only
+  # when nobody drives (the car carries them otherwise), per adult per flight.
+  infants: 1
+  infant_fee_eur: {Ryanair: 25}
+  checked_bags_per_adult: 1
+  checked_bag_eur: {Ryanair: 59.99}
   # Door to door: names for the ends of each journey, taxi to the home airport,
   # and drives from Italian airports (Google Maps time, toll one way).
   home_name: home

@@ -173,6 +173,15 @@ class Travel(BaseModel):
     home_airports: list[str] = Field(default_factory=lambda: ["POZ"])
     leave_home_after: time = time(5, 0)  # earliest bus/train from home
     airport_margin_hours: float = Field(default=1.5, ge=0)  # at the airport before take-off
+    # Basia flies on Paula's lap as an infant (under 2): no seat, an infant fee
+    # per one-way flight, with the baby allowance (small bag, child seat, stroller).
+    infants: int = Field(default=1, ge=0)
+    infant_fee_eur: dict[str, float] = Field(default_factory=dict)  # by airline
+    # Large luggage: when Martin drives it goes in the car and Paula and Basia
+    # travel light. When nobody drives, each adult checks this many 20 kg bags
+    # on every flight, at checked_bag_eur by airline.
+    checked_bags_per_adult: int = Field(default=1, ge=0)
+    checked_bag_eur: dict[str, float] = Field(default_factory=dict)
     # Door to door: names for the ends of a journey (real places stay in data/).
     home_name: str = "home"
     italy_home_name: str = "Faenza"
@@ -322,8 +331,9 @@ class TransportOption(BaseModel):
     depart: datetime
     arrive: datetime
     price_eur: float = Field(ge=0)
-    # How many people `price_eur` covers. The planner uses the price per person
-    # times the people on the leg (Martin 1, Paula and Basia 2, everyone 3).
+    # How many seats `price_eur` covers. The planner uses the price per seat
+    # times the adult seats on the leg (Martin 1, Paula 1, both 2); an infant on
+    # a lap pays the airline's infant fee instead (travel.infant_fee_eur).
     seats: int = Field(default=1, ge=1)
     source_url: str | None = None
     # When this was seen in a live search (airline site or app, or Momondo).

@@ -107,6 +107,13 @@ Personal data stays **out of git**. Real files live in `data/` (gitignored).
    Google Maps time, toll) or train. Cost is split into flights, car hire,
    own car, driving in Italy (tolls + fuel, also for hire cars: two drives
    when Martin fetches Paula and Basia), taxis, trains and buses.
+   Seats: Martin and Paula; Basia flies on Paula's lap and pays the airline's
+   infant fee per flight (`travel.infant_fee_eur`, Ryanair €25). When Martin
+   drives, the large luggage goes in the car and Paula and Basia travel light
+   (hand luggage + baby allowance). When nobody drives, each adult checks
+   `checked_bags_per_adult` 20 kg bags per flight (`checked_bag_eur`; Ryanair's
+   fee table maximum €59.99, since the exact price shows only while booking).
+   An airline without a known fee leaves the option "not a proposal yet".
 5. **Compare.** `planner report` combines windows, stays and transport into
    2–4 options ranked by timing first (route choice, door-to-door time per
    person), cost last, with pros/cons and a recommendation,

@@ -62,7 +62,12 @@ class Leg:
 
     @property
     def people(self) -> int:
-        return {"Martin": 1, "family": 2, "everyone": 3}[self.who]
+        """Seats: Martin and Paula; Basia flies on Paula's lap."""
+        return {"Martin": 1, "family": 1, "everyone": 2}[self.who]
+
+    @property
+    def with_infant(self) -> bool:
+        return self.who in ("family", "everyone")
 
 
 @dataclass
@@ -416,6 +421,14 @@ def _ground(
     return found
 
 
+def _by_airline(table: dict[str, float], carrier: str) -> float | None:
+    """Fee for an airline, matching the start of the carrier name (e.g. 'Ryanair FR 3594')."""
+    for name, eur in table.items():
+        if carrier.lower().startswith(name.lower()):
+            return eur
+    return None
+
+
 def _uses_train(c: Constraints, leg: Leg) -> bool:
     """Martin alone, flying into a train airport (when he has no car with him)."""
     if leg.who != "Martin" or leg.choice is None or leg.mode != "flight":
@@ -694,6 +707,22 @@ def build_options(
                     )
                 if leg.choice is not None:
                     add("Flights", leg.choice.price_eur / leg.choice.seats * leg.people)
+                    carrier = leg.choice.carrier
+                    if leg.with_infant and c.travel.infants:
+                        fee = _by_airline(c.travel.infant_fee_eur, carrier)
+                        if fee is None:
+                            open_ground += 1
+                            cons.append(f"{carrier}: infant fee not checked yet")
+                        else:
+                            add("Infant fees", fee * c.travel.infants)
+                    bags = 0 if drive else leg.people * c.travel.checked_bags_per_adult
+                    if bags:
+                        fee = _by_airline(c.travel.checked_bag_eur, carrier)
+                        if fee is None:
+                            open_ground += 1
+                            cons.append(f"{carrier}: 20 kg bag price not checked yet")
+                        else:
+                            add("Checked bags", fee * bags)
                     if leg.choice.checked_on is None:
                         cons.append(
                             f"{leg.choice.carrier} {leg.choice.id} on {leg.day} not checked "
