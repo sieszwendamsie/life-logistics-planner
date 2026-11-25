@@ -48,10 +48,21 @@ class Leg:
     choice: TransportOption | None = None
     tier: int | None = None  # 1 = best route group
     hours: float | None = None  # door to door
+    # Bus or train between home and a far airport (live-checked), if needed.
+    transfer: GroundOption | None = None
+    needs_transfer: bool = False
 
     @property
     def missing(self) -> bool:
         return self.mode == "flight" and self.choice is None
+
+    @property
+    def open_transfer(self) -> bool:
+        return self.needs_transfer and self.transfer is None
+
+    @property
+    def people(self) -> int:
+        return {"Martin": 1, "family": 2, "everyone": 3}[self.who]
 
 
 @dataclass
@@ -172,6 +183,54 @@ def _door_hours(travel: Travel, o: TransportOption) -> float:
     return flight + th.get(o.origin, 0) + th.get(o.destination, 0)
 
 
+def _transfer(
+    transport: OptionsFile, travel: Travel, o: TransportOption
+) -> tuple[bool, GroundOption | None]:
+    """Bus or train between home and the Polish or German end of a flight.
+
+    Returns (needed, best checked one). Outbound: the latest one that leaves home
+    after `leave_home_after` and reaches the airport `airport_margin_hours` before
+    take-off. Return: the first one leaving 45 minutes after landing.
+    """
+    if o.direction == "outbound":
+        airport = o.origin
+    elif o.direction in ("return", "home"):
+        airport = o.destination
+    else:
+        return False, None
+    if airport in travel.home_airports:
+        return False, None
+    margin = timedelta(hours=travel.airport_margin_hours)
+    fits = []
+    for g in transport.ground:
+        if g.kind != "transfer" or g.airport != airport or g.checked_on is None:
+            continue
+        if g.depart is None or g.arrive is None:
+            continue
+        if o.direction == "outbound":
+            ok = g.arrive <= o.depart - margin and g.depart.time() >= travel.leave_home_after
+            ok = ok and g.depart.date() == o.depart.date()
+        else:
+            ok = g.depart >= o.arrive + timedelta(minutes=45)
+            ok = ok and g.depart.date() == o.arrive.date()
+        if ok:
+            fits.append(g)
+    if not fits:
+        return True, None
+    if o.direction == "outbound":
+        return True, max(fits, key=lambda g: (g.depart, -g.price_eur))
+    return True, min(fits, key=lambda g: (g.arrive, g.price_eur))
+
+
+def _flight_hours(travel: Travel, o: TransportOption, t: GroundOption | None) -> float:
+    if t is None or t.depart is None or t.arrive is None:
+        return _door_hours(travel, o)
+    th = travel.transfer_hours
+    if o.direction == "outbound":
+        return (o.arrive - t.depart).total_seconds() / 3600 + th.get(o.destination, 0)
+    return (t.arrive - o.depart).total_seconds() / 3600 + th.get(o.origin, 0)
+
+
 def _flight(
     transport: OptionsFile,
     travel: Travel,
@@ -180,7 +239,7 @@ def _flight(
     day: date,
     onward: OnwardTrip | None = None,
 ) -> Leg:
-    best: tuple[tuple[int, float, float], TransportOption, int, float] | None = None
+    best: tuple[tuple, Leg] | None = None
     for o in transport.options:
         if o.direction != d or o.depart.date() != day:
             continue
@@ -189,14 +248,16 @@ def _flight(
         tier = _tier(travel, o, onward)
         if tier is None:
             continue
-        hours = _door_hours(travel, o)
-        key = (tier, hours, o.price_eur)
+        needed, t = _transfer(transport, travel, o)
+        hours = _flight_hours(travel, o, t)
+        leg = Leg(who, d, day, "flight", o, tier, round(hours, 2), t, needed)
+        # A flight you cannot get to with a checked bus or train comes last.
+        key = (leg.open_transfer, tier, hours, o.price_eur)
         if best is None or key < best[0]:
-            best = (key, o, tier, hours)
+            best = (key, leg)
     if best is None:
         return Leg(who, d, day)
-    _, o, tier, hours = best
-    return Leg(who, d, day, "flight", o, tier, round(hours, 2))
+    return best[1]
 
 
 def _family_flight(
@@ -450,6 +511,7 @@ def build_options(
                 else:
                     cost += elsewhere_nights * solo_place.price_per_night_eur
 
+            open_ground = 0
             martin_h = sum(leg.hours or 0 for leg in legs if leg.who in ("Martin", "everyone"))
             family_h = sum(leg.hours or 0 for leg in legs if leg.who in ("family", "everyone"))
             for leg in legs:
@@ -457,6 +519,23 @@ def build_options(
                     cons.append(
                         f"No direct flight on your routes for {leg.who} ({leg.direction}, "
                         f"{leg.day}): ask for an alternative route"
+                    )
+                if leg.transfer is not None:
+                    t = leg.transfer
+                    cost += t.price_eur * leg.people
+                    cons.append(
+                        f"{leg.who}: {t.detail} ({t.depart:%H:%M} to {t.arrive:%H:%M}, "
+                        f"€{t.price_eur * leg.people:.0f}, checked {t.checked_on:%d %b}; in total)"
+                    )
+                elif leg.open_transfer:
+                    open_ground += 1
+                    port = (
+                        leg.choice.origin if leg.direction == "outbound" else leg.choice.destination
+                    )
+                    cons.append(
+                        f"{leg.who}: no live-checked bus or train to {port} that leaves home "
+                        f"after {c.travel.leave_home_after:%H:%M} and arrives "
+                        f"{c.travel.airport_margin_hours:g} h before the flight"
                     )
                 if leg.choice is not None:
                     cost += leg.choice.price_eur
@@ -504,7 +583,6 @@ def build_options(
                 (g.day for g in legs if g.who == "family" and g.direction == "return"), he
             )
             soft = _soft_cons(c, legs, w, fam_out, fam_back, peaks, cons)
-            open_ground = 0
             if not drive and c.onward is None:
                 for g, label in _ground(c, transport, legs, w, fam_out, fam_back):
                     if g is None:

@@ -92,6 +92,13 @@ Personal data stays **out of git**. Real files live in `data/` (gitignored).
    Paula and Basia always need a car. Martin alone takes the train when he
    flies into `travel.train_airports` (Bologna), else hires a car. An option
    with an unchecked hire car or train is not a proposal yet.
+   Travel days: Martin never flies in on a required office day; he arrives
+   the day before at the latest (`stay_rules.travel_on_office_days: false`).
+   Airports other than `travel.home_airports` (Poznań) need a live-checked
+   bus or train from home (`ground:` kind transfer, per person), leaving home
+   after `leave_home_after` (05:00) and arriving `airport_margin_hours` (2 h)
+   before take-off. Paula can't drive him and he does not sleep at airports.
+   Door-to-door time then counts from that bus or train.
 5. **Compare.** `planner report` combines windows, stays and transport into
    2–4 options ranked by timing first (route choice, door-to-door time per
    person), cost last, with pros/cons and a recommendation,

@@ -359,3 +359,46 @@ def test_cli_scenarios_compares_return_dates(capsys: pytest.CaptureFixture[str])
 def test_unchecked_flight_is_a_con() -> None:
     [o] = build_options(CONSTRAINTS, PLACES, JOURNEYS, [w("2027-02-01", "2027-02-22")])
     assert any("not checked live yet" in c for c in o.cons)
+
+
+def test_far_airport_needs_a_checked_bus_or_train() -> None:
+    out = flight("ber", "outbound", "BER", "BLQ", "2027-02-01") | {
+        "depart": "2027-02-01T13:45",
+        "arrive": "2027-02-01T15:30",
+    }
+    travel = {
+        **TRAVEL,
+        "car": None,
+        "route_tiers": [{"name": "far", "origins": ["BER", "POZ"], "destinations": ["BLQ"]}],
+    }
+    c = with_travel(travel=travel)
+    win = [w("2027-02-01", "2027-02-22")]
+    back = flight("r", "return", "BLQ", "POZ", "2027-02-22")
+
+    def bus(gid: str, dep: str, arr: str) -> dict:
+        return {
+            "id": gid,
+            "kind": "transfer",
+            "airport": "BER",
+            "start": "2027-02-01",
+            "depart": f"2027-02-01T{dep}",
+            "arrive": f"2027-02-01T{arr}",
+            "price_eur": 20,
+            "checked_on": "2026-11-25",
+        }
+
+    # No bus checked yet: the option is not a proposal.
+    [o] = build_options(c, PLACES, OptionsFile.model_validate({"options": [out, back]}), win)
+    assert o.legs[0].open_transfer and o.open_ground >= 1
+    # Too early (before 05:00) or too late (less than 2 h before take-off): still open.
+    late = {
+        "options": [out, back],
+        "ground": [bus("a", "04:00", "07:20"), bus("b", "09:00", "13:00")],
+    }
+    [o] = build_options(c, PLACES, OptionsFile.model_validate(late), win)
+    assert o.legs[0].open_transfer
+    # A bus leaving 06:00 and arriving 09:20 fits; door to door counts from 06:00.
+    ok = {"options": [out, back], "ground": [bus("c", "06:00", "09:20")]}
+    [o] = build_options(c, PLACES, OptionsFile.model_validate(ok), win)
+    assert o.legs[0].transfer.id == "c"
+    assert o.legs[0].hours == 9.5 + 1  # 06:00 to 15:30, plus BLQ to home

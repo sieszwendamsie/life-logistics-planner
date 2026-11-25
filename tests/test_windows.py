@@ -50,6 +50,13 @@ def test_office_period_must_be_fully_inside() -> None:
     assert all(len(w.office_covered) == 1 for w in windows)
 
 
+def test_no_travel_on_office_days() -> None:
+    office = [{"start": "2027-02-03", "end": "2027-02-13"}]
+    windows = find_windows(make(office_required=office))
+    assert windows
+    assert all(w.start < date(2027, 2, 3) and w.end > date(2027, 2, 13) for w in windows)
+
+
 def test_windows_stay_inside_horizon_month_end() -> None:
     windows = find_windows(make(horizon={"start": "2027-01-01", "end": "2027-02-20"}))
     assert all(w.end <= date(2027, 2, 20) for w in windows)

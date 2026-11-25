@@ -30,6 +30,9 @@ class StayRules(BaseModel):
     max_stay_days: int = Field(ge=1)
     min_gap_days: int = Field(ge=0)
     max_gap_days: int = Field(ge=0)
+    # Martin never travels on a day he must be in the office in Italy: he arrives
+    # at least the day before and leaves at the earliest the day after.
+    travel_on_office_days: bool = False
 
     @model_validator(mode="after")
     def _min_not_above_max(self) -> "StayRules":
@@ -147,6 +150,12 @@ class Travel(BaseModel):
     # the train (e.g. Marconi Express + train to Faenza) instead of hiring a car.
     # When Paula and Basia are there, a car is always needed.
     train_airports: list[str] = Field(default_factory=lambda: ["BLQ"])
+    # Airports near home reached by taxi or local bus (time from transfer_hours).
+    # Any other airport in Poland or Germany needs a live-checked bus or train
+    # (`ground:` kind transfer). Paula can't drive Martin; no airport hotels.
+    home_airports: list[str] = Field(default_factory=lambda: ["POZ"])
+    leave_home_after: time = time(5, 0)  # earliest bus/train from home
+    airport_margin_hours: float = Field(default=2, ge=0)  # at the airport before take-off
     family_flights: FamilyFlights = Field(default_factory=FamilyFlights)
     # Try not to fly on long weekends (prices are higher). Soft rule.
     avoid_long_weekends: bool = True
@@ -301,9 +310,13 @@ class GroundOption(BaseModel):
     """
 
     id: str
-    kind: Literal["car_hire", "train"]
+    kind: Literal["car_hire", "train", "transfer"]
     start: date
     end: date | None = None
+    # transfer only: bus or train between home and a far airport, per person.
+    airport: str | None = None  # IATA code of the airport it serves
+    depart: datetime | None = None
+    arrive: datetime | None = None
     where: str = ""  # e.g. "BGY to BGY" or "Faenza to Bergamo airport"
     detail: str = ""  # e.g. "Ford Fiesta or similar, DiscoverCars" or train times
     price_eur: float = Field(ge=0)

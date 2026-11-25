@@ -11,6 +11,7 @@ stay_rules:
   max_stay_days: 28
   min_gap_days: 28
   max_gap_days: 35
+  travel_on_office_days: false  # arrive the day before a required office day
 
 office_required:
   - {start: 2027-02-01, end: 2027-02-05}
@@ -61,6 +62,12 @@ travel:
   # car. With Paula and Basia there a car is always needed (hire prices from Kayak,
   # recorded under `ground:` in options.yaml).
   train_airports: [BLQ]
+  # Other airports (Wrocław, Warsaw, Berlin) need a live-checked bus or train from
+  # home (`ground:` kind transfer in options.yaml), leaving after 05:00 and arriving
+  # 2 h before the flight. No lifts, no airport hotels.
+  home_airports: [POZ]
+  leave_home_after: "05:00"
+  airport_margin_hours: 2
   # Paula and Basia: weekend flights between 10:00 and 18:00 preferred. Their flight
   # day can move up to shift_days into the stay to get there. Soft rules.
   family_flights: {weekend: true, earliest: "10:00", latest: "18:00", shift_days: 4}
