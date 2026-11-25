@@ -11,8 +11,11 @@ never enter personal or payment details, never click "Continue" past the flight 
 
 ## Rules (from Martin)
 
-- **Live data only.** Times and prices come from the airline site (Ryanair, Wizz)
-  or Momondo, checked now. Never from schedule sites (FlightMapper and similar were
+- **Live data only, airline site first.** Every flight's time and price comes from
+  the airline's own site (Ryanair, Wizz, Eurowings, LOT...), checked now. Momondo is
+  for discovery only: finding which airlines fly a route on a day, and spotting a
+  cheaper fare. If Momondo shows a cheaper price, keep it as a note and still confirm
+  the flight on the airline site. Never from schedule sites (FlightMapper and similar were
   wrong before). If a page does not load after two tries, say so and leave the
   journey open. Never guess.
 - **Direct flights only**, in the route order of `travel.route_tiers` in

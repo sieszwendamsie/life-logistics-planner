@@ -50,6 +50,15 @@ travel:
     min_stay_days: 21
     clear_days: 7
     days_off_only: true  # drive only on weekends, holidays, shutdown or leave days
+    # Cost of one drive (assumptions; defaults shown). Vignettes: the cheapest of one
+    # per drive or one long one covering both drives is picked per country.
+    costs:
+      distance_km: 1400
+      l_per_100km: 6
+      diesel_eur_per_l: 2.00
+      toll_eur: 32.20  # Italy one way, via the free Venice bypass
+  # Hire car in Italy when Martin flies (assumed EUR per day). Omit for none.
+  rental_eur_per_day: 30
   # Paula and Basia: weekend flights between 10:00 and 18:00 preferred. Their flight
   # day can move up to shift_days into the stay to get there. Soft rules.
   family_flights: {weekend: true, earliest: "10:00", latest: "18:00", shift_days: 4}

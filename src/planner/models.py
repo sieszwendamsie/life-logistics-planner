@@ -74,6 +74,39 @@ class RouteTier(BaseModel):
     destinations: list[str]
 
 
+class Vignette(BaseModel):
+    """A motorway vignette: valid for `days` consecutive days from the first use."""
+
+    country: str  # CZ, AT, ...
+    days: int = Field(ge=1)
+    price_eur: float = Field(ge=0)
+
+
+class CarCosts(BaseModel):
+    """Assumptions for the cost of one drive between Poznań and Faenza.
+
+    Defaults: Martin's route (about 1400 km, 6 l/100 km diesel), CZ and AT
+    vignettes, Italian toll Ugovizza-Tarvisio to Faenza using the free Venice
+    bypass (off at Venezia Est, back on at Padova Est). Prices checked on
+    2026-11-25; sources in docs/spec.md.
+    """
+
+    distance_km: float = Field(default=1400, gt=0)  # one way
+    l_per_100km: float = Field(default=6, gt=0)
+    diesel_eur_per_l: float = Field(default=2.00, gt=0)  # average along the route
+    toll_eur: float = Field(default=32.20, ge=0)  # one way, Italy
+    vignettes: list[Vignette] = Field(
+        default_factory=lambda: [
+            Vignette(country="CZ", days=1, price_eur=9.41),
+            Vignette(country="CZ", days=10, price_eur=12.28),
+            Vignette(country="CZ", days=30, price_eur=19.65),
+            Vignette(country="AT", days=1, price_eur=9.80),
+            Vignette(country="AT", days=10, price_eur=13.00),
+            Vignette(country="AT", days=61, price_eur=32.60),
+        ]
+    )
+
+
 class CarSettings(BaseModel):
     """Martin drives Poznań to Faenza while the family flies."""
 
@@ -85,6 +118,7 @@ class CarSettings(BaseModel):
     # Martin is paid per hour, so he drives only on days he would not work:
     # weekends, public holidays (PL or IT), shutdown and leave days.
     days_off_only: bool = True
+    costs: CarCosts = Field(default_factory=CarCosts)
 
 
 class FamilyFlights(BaseModel):
@@ -109,6 +143,9 @@ class Travel(BaseModel):
     # Hours from each airport to home (Poznań or Faenza), used for door-to-door time.
     transfer_hours: dict[str, float] = Field(default_factory=dict)
     car: CarSettings | None = None
+    # Hire car in Italy when Martin flies instead of driving (assumption, EUR per
+    # day for the whole stay). None: no hire car, nothing added.
+    rental_eur_per_day: float | None = Field(default=None, ge=0)
     family_flights: FamilyFlights = Field(default_factory=FamilyFlights)
     # Try not to fly on long weekends (prices are higher). Soft rule.
     avoid_long_weekends: bool = True

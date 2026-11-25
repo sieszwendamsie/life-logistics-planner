@@ -78,6 +78,16 @@ Personal data stays **out of git**. Real files live in `data/` (gitignored).
    Car: only on days Martin does not work (weekends, public holidays,
    shutdown, leave), because he is paid per hour. For long stays with no other travel plans nearby, Martin drives
    Poznań to Faenza and Paula and Basia fly. This is preferred when allowed.
+   Driving cost is in the total (`travel.car.costs`, assumptions checked
+   2026-11-25): 1400 km each way at 6 l/100 km, diesel €2.00/l (EU Oil Bulletin,
+   9 Nov 2026: PL 1.75, CZ 1.90, AT 2.09, IT 2.22); Italian toll €32.20 one way
+   (calcolopedaggio.it: Ugovizza-Tarvisio to Venezia Est €18.90, free Mestre
+   bypass, Padova Est to Faenza €13.30; the full route via the Passante is
+   €34.80); vignettes CZ 1/10/30 days €9.41/12.28/19.65 (230/300/480 Kč),
+   AT 1/10 days and 2 months €9.80/13.00/32.60 (2-month bought online starts
+   18 days later). Per country the cheaper of one vignette per drive or one
+   long one covering both drives is used. When Martin flies, an assumed hire
+   car per day (`travel.rental_eur_per_day`) is added for the whole stay.
 5. **Compare.** `planner report` combines windows, stays and transport into
    2–4 options ranked by timing first (route choice, door-to-door time per
    person), cost last, with pros/cons and a recommendation,

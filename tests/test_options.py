@@ -4,8 +4,9 @@ from pathlib import Path
 import pytest
 
 from planner.cli import main
+from planner.costs import round_trip
 from planner.loaders import load_accommodation, load_constraints, load_options
-from planner.models import AccommodationFile, Constraints, OptionsFile
+from planner.models import AccommodationFile, CarCosts, Constraints, OptionsFile
 from planner.options import build_options, shortlist
 from planner.windows import Window
 
@@ -261,6 +262,26 @@ def test_car_option_when_no_other_travel_nearby() -> None:
     ]
     assert car[0].martin_hours == 26
     assert shortlist(built)[0].martin_drives
+    # Driving costs are in the total; the flying option has no hire car by default.
+    fly = next(o for o in built if not o.martin_drives)
+    drive_cost = round_trip(CarCosts(), date(2027, 2, 1), date(2027, 2, 22)).total_eur
+    assert car[0].total_cost_eur == pytest.approx(fly.total_cost_eur + drive_cost)
+    assert any("Driving there and back" in x for x in car[0].cons)
+
+
+def test_hire_car_cost_when_martin_flies() -> None:
+    journeys = OptionsFile.model_validate(
+        {
+            "options": [
+                flight("f1", "outbound", "POZ", "BLQ", "2027-02-01"),
+                flight("f2", "return", "BLQ", "POZ", "2027-02-22"),
+            ]
+        }
+    )
+    c = with_travel(travel={**TRAVEL, "car": None, "rental_eur_per_day": 30})
+    [o] = build_options(c, PLACES, journeys, [w("2027-02-01", "2027-02-22")])
+    assert not o.martin_drives
+    assert any("Hire car in Italy about €630" in x for x in o.cons)
 
 
 def test_no_car_near_other_travel_or_short_stay() -> None:

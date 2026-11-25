@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Literal
 
+from planner.costs import round_trip
 from planner.holidays import LongWeekend, peak_days
 from planner.models import (
     Accommodation,
@@ -417,9 +418,19 @@ def build_options(
 
             if c.onward is not None:
                 pros.append(f"Continues to {c.onward.name} for {c.onward.nights} nights, then home")
-            if drive:
+            car = c.travel.car
+            if drive and car is not None:
                 pros.append("Martin drives and has the car in Italy; Paula and Basia fly")
-                cons.append("Car costs (fuel, tolls) not in total")
+                drive_cost = round_trip(car.costs, w.start, w.end)
+                cost += drive_cost.total_eur
+                cons.append(drive_cost.text() + " (assumed prices, in total)")
+            elif (rate := c.travel.rental_eur_per_day) is not None and c.onward is None:
+                rental = w.days * rate
+                cost += rental
+                cons.append(
+                    f"Hire car in Italy about €{rental:.0f} ({w.days} days x "
+                    f"€{rate:.0f}, assumed, not checked live; in total)"
+                )
             if solo:
                 where = []
                 if solo - elsewhere_nights:
