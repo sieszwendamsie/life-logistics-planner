@@ -57,8 +57,10 @@ travel:
       l_per_100km: 6
       diesel_eur_per_l: 2.00
       toll_eur: 32.20  # Italy one way, via the free Venice bypass
-  # Hire car in Italy when Martin flies (assumed EUR per day). Omit for none.
-  rental_eur_per_day: 30
+  # Martin alone flying into these airports takes the train; otherwise he hires a
+  # car. With Paula and Basia there a car is always needed (hire prices from Kayak,
+  # recorded under `ground:` in options.yaml).
+  train_airports: [BLQ]
   # Paula and Basia: weekend flights between 10:00 and 18:00 preferred. Their flight
   # day can move up to shift_days into the stay to get there. Soft rules.
   family_flights: {weekend: true, earliest: "10:00", latest: "18:00", shift_days: 4}

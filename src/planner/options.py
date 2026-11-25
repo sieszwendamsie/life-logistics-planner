@@ -26,6 +26,7 @@ from planner.models import (
     Accommodation,
     AccommodationFile,
     Constraints,
+    GroundOption,
     OnwardTrip,
     OptionsFile,
     TransportOption,
@@ -74,6 +75,8 @@ class Option:
     # How many soft preferences the option breaks (weekday or off-hours family
     # flights, long-weekend flights, holidays spent in Italy). Ranked after timing.
     soft: int = 0
+    # Hire cars or trains this option needs whose price was not checked live.
+    open_ground: int = 0
 
     @property
     def family_together(self) -> bool:
@@ -286,6 +289,53 @@ def _legs(
     return legs
 
 
+def _ground(
+    c: Constraints,
+    transport: OptionsFile,
+    legs: list[Leg],
+    w: Window,
+    fam_out: date,
+    fam_back: date,
+) -> list[tuple[GroundOption | None, str]]:
+    """Hire car and trains in Italy when Martin flies, with their checked prices.
+
+    Paula and Basia always need a car. Martin alone takes the train when he flies
+    to one of `travel.train_airports` (e.g. Bologna), otherwise he hires a car.
+    """
+    trains = c.travel.train_airports
+    solo_out = next((g for g in legs if g.who == "Martin" and g.direction == "outbound"), None)
+    solo_back = next((g for g in legs if g.who == "Martin" and g.direction == "return"), None)
+    needs: list[tuple[str, date, date | None, str]] = []
+    car_start, car_end = w.start, w.end
+    if solo_out and solo_out.choice and solo_out.choice.destination in trains:
+        airport = solo_out.choice.destination
+        needs.append(("train", w.start, None, f"Martin: train from {airport}"))
+        needs.append(("train", fam_out, None, "Martin: train to collect the hire car"))
+        car_start = fam_out
+    if solo_back and solo_back.choice and solo_back.choice.origin in trains:
+        needs.append(("train", w.end, None, f"Martin: train to {solo_back.choice.origin}"))
+        car_end = fam_back
+    needs.insert(
+        0, ("car_hire", car_start, car_end, f"Hire car {car_start:%d %b} to {car_end:%d %b}")
+    )
+
+    found: list[tuple[GroundOption | None, str]] = []
+    for kind, start, end, label in needs:
+        match = [
+            g
+            for g in transport.ground
+            if g.kind == kind
+            and g.start == start
+            and g.checked_on is not None
+            and (kind == "train" or g.end == end)
+        ]
+        best = min(match, key=lambda g: g.price_eur) if match else None
+        if best is not None and best.where:
+            label = f"{label} ({best.where})"
+        found.append((best, label))
+    return found
+
+
 def _days(start: date, end: date) -> list[date]:
     return [start + timedelta(days=i) for i in range((end - start).days)]
 
@@ -424,13 +474,6 @@ def build_options(
                 drive_cost = round_trip(car.costs, w.start, w.end)
                 cost += drive_cost.total_eur
                 cons.append(drive_cost.text() + " (assumed prices, in total)")
-            elif (rate := c.travel.rental_eur_per_day) is not None and c.onward is None:
-                rental = w.days * rate
-                cost += rental
-                cons.append(
-                    f"Hire car in Italy about €{rental:.0f} ({w.days} days x "
-                    f"€{rate:.0f}, assumed, not checked live; in total)"
-                )
             if solo:
                 where = []
                 if solo - elsewhere_nights:
@@ -461,6 +504,18 @@ def build_options(
                 (g.day for g in legs if g.who == "family" and g.direction == "return"), he
             )
             soft = _soft_cons(c, legs, w, fam_out, fam_back, peaks, cons)
+            open_ground = 0
+            if not drive and c.onward is None:
+                for g, label in _ground(c, transport, legs, w, fam_out, fam_back):
+                    if g is None:
+                        open_ground += 1
+                        cons.append(f"{label}: price not checked live yet")
+                    else:
+                        cost += g.price_eur
+                        cons.append(
+                            f"{label}: €{g.price_eur:.0f} ({g.detail}, checked "
+                            f"{g.checked_on:%d %b}; in total)"
+                        )
             if (fam_out, fam_back) != (hs, he):
                 whole = f"Family together at {house.name} for the whole stay"
                 pros[:] = [
@@ -496,6 +551,7 @@ def build_options(
                     family_start=fam_out,
                     family_end=fam_back,
                     soft=soft,
+                    open_ground=open_ground,
                 )
             )
     return result

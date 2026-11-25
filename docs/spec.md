@@ -86,8 +86,12 @@ Personal data stays **out of git**. Real files live in `data/` (gitignored).
    €34.80); vignettes CZ 1/10/30 days €9.41/12.28/19.65 (230/300/480 Kč),
    AT 1/10 days and 2 months €9.80/13.00/32.60 (2-month bought online starts
    18 days later). Per country the cheaper of one vignette per drive or one
-   long one covering both drives is used. When Martin flies, an assumed hire
-   car per day (`travel.rental_eur_per_day`) is added for the whole stay.
+   long one covering both drives is used. When Martin flies there is no assumed
+   price: hire cars (Kayak) and trains (Trenitalia, Marconi Express) are
+   recorded live under `ground:` in options.yaml with source and check date.
+   Paula and Basia always need a car. Martin alone takes the train when he
+   flies into `travel.train_airports` (Bologna), else hires a car. An option
+   with an unchecked hire car or train is not a proposal yet.
 5. **Compare.** `planner report` combines windows, stays and transport into
    2–4 options ranked by timing first (route choice, door-to-door time per
    person), cost last, with pros/cons and a recommendation,

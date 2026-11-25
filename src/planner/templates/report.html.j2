@@ -136,7 +136,7 @@ footer { color: var(--muted); font-size: 0.8rem; margin-top: 24px; }
       then {{ recommended.start.strftime("%a %d %b") }} to {{ recommended.end.strftime("%a %d %b") }}</h2>
     <p class="sub">{{ recommended.nights }} nights. {{ recommended.mode }}.
       {{ recommended.family_text }}{{ " " }}
-      {%- if recommended.open_flights %}{{ recommended.open_flights }} flight(s) still to check live.{% endif %}</p>
+      {%- if recommended.open_checks %}{{ recommended.open_checks }} price(s) still to check live.{% endif %}</p>
   </section>
   {% endif %}
 
@@ -161,7 +161,7 @@ footer { color: var(--muted); font-size: 0.8rem; margin-top: 24px; }
             <td>{{ "Together" if o.family_together else "Martin alone part of it" }}</td>
             <td>{{ o.mode }}</td>
             <td class="num">{{ hours(o.martin_hours) }} / {{ hours(o.family_hours) }}</td>
-            <td>{% if o.open_flights %}<span class="st-open">{{ o.open_flights }} to check</span>{% else %}<span class="st-checked">checked</span>{% endif %}</td>
+            <td>{% if o.open_checks %}<span class="st-open">{{ o.open_checks }} to check</span>{% else %}<span class="st-checked">checked</span>{% endif %}</td>
             {% else %}
             <td colspan="6">No feasible option</td>
             {% endif %}
@@ -221,8 +221,8 @@ footer { color: var(--muted); font-size: 0.8rem; margin-top: 24px; }
 
     <div class="opts">
       {% for o in s.options %}
-      <article class="opt{{ ' rec' if o.recommended }}{{ ' unchecked' if o.open_flights }}">
-        {% if o.open_flights %}<p class="warn">Not a proposal yet: {{ o.open_flights }} flight(s) not checked live.</p>{% endif %}
+      <article class="opt{{ ' rec' if o.recommended }}{{ ' unchecked' if o.open_checks }}">
+        {% if o.open_checks %}<p class="warn">Not a proposal yet: {{ o.open_checks }} flight(s), hire car(s) or train(s) not checked live.</p>{% endif %}
         <h3>Option {{ o.letter }}: {{ o.start.strftime("%a %d %b") }} to {{ o.end.strftime("%a %d %b") }}
           {% if o.recommended %}<span class="badge">Recommended</span>{% endif %}</h3>
         <div class="facts">

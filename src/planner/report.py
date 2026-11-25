@@ -120,7 +120,7 @@ class OptionView:
     pros: list[str]
     cons: list[str]
     rows: list[Row]
-    open_flights: int
+    open_checks: int  # flights, hire cars or trains not checked live yet
     family_text: str = ""
     recommended: bool = False
 
@@ -333,8 +333,10 @@ def build_view(
                         if not x.startswith("No direct flight") and "price per night" not in x
                     ],
                     rows=rows,
-                    # Flights not found yet, or recorded without a live check.
-                    open_flights=sum(
+                    # Flights not found yet or not checked live, plus hire cars or
+                    # trains without a live price.
+                    open_checks=o.open_ground
+                    + sum(
                         leg.mode == "flight"
                         and (leg.choice is None or leg.choice.checked_on is None)
                         for leg in o.legs
@@ -348,7 +350,7 @@ def build_view(
             )
         # Only options whose flights were all checked live can be proposed.
         checked = [
-            (ov, o) for ov, o in zip(view.options, s.options, strict=False) if not ov.open_flights
+            (ov, o) for ov, o in zip(view.options, s.options, strict=False) if not ov.open_checks
         ]
         if checked:
             view.best = checked[0][0]

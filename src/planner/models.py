@@ -143,9 +143,10 @@ class Travel(BaseModel):
     # Hours from each airport to home (Poznań or Faenza), used for door-to-door time.
     transfer_hours: dict[str, float] = Field(default_factory=dict)
     car: CarSettings | None = None
-    # Hire car in Italy when Martin flies instead of driving (assumption, EUR per
-    # day for the whole stay). None: no hire car, nothing added.
-    rental_eur_per_day: float | None = Field(default=None, ge=0)
+    # When Martin is in Italy alone and flies into one of these airports, he takes
+    # the train (e.g. Marconi Express + train to Faenza) instead of hiring a car.
+    # When Paula and Basia are there, a car is always needed.
+    train_airports: list[str] = Field(default_factory=lambda: ["BLQ"])
     family_flights: FamilyFlights = Field(default_factory=FamilyFlights)
     # Try not to fly on long weekends (prices are higher). Soft rule.
     avoid_long_weekends: bool = True
@@ -292,7 +293,26 @@ class TransportOption(BaseModel):
         return self
 
 
+class GroundOption(BaseModel):
+    """A live-checked hire car or train in Italy (Kayak, Trenitalia...).
+
+    Hire car: `start` is the pick-up day, `end` the drop-off day. Train: `start`
+    is the travel day (`end` empty). `price_eur` is the total for that booking.
+    """
+
+    id: str
+    kind: Literal["car_hire", "train"]
+    start: date
+    end: date | None = None
+    where: str = ""  # e.g. "BGY to BGY" or "Faenza to Bergamo airport"
+    detail: str = ""  # e.g. "Ford Fiesta or similar, DiscoverCars" or train times
+    price_eur: float = Field(ge=0)
+    source_url: str | None = None
+    checked_on: date | None = None
+
+
 class OptionsFile(BaseModel):
     """Contents of options.yaml."""
 
     options: list[TransportOption]
+    ground: list[GroundOption] = Field(default_factory=list)
