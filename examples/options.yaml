@@ -3,7 +3,7 @@
 # price_eur is the price of the journey for everyone on it.
 options:
   - {id: out-0124, direction: outbound, carrier: Ryanair, origin: POZ, destination: BGY,
-     depart: 2027-01-24T06:10:00, arrive: 2027-01-24T08:35:00, price_eur: 62.5, checked_on: 2026-11-25,
+     depart: 2027-01-24T07:10:00, arrive: 2027-01-24T09:35:00, price_eur: 62.5, checked_on: 2026-11-25,
      source_url: https://example.com/search/1}
   - {id: out-0124-via-waw, direction: outbound, carrier: LOT, origin: POZ, destination: BLQ,
      stops: 1, depart: 2027-01-24T07:00:00, arrive: 2027-01-24T12:40:00, price_eur: 45}

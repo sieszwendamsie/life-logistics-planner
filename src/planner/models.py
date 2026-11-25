@@ -135,6 +135,10 @@ class FamilyFlights(BaseModel):
     earliest: time = time(10, 0)  # preferred departure window
     latest: time = time(18, 0)
     shift_days: int = Field(default=4, ge=0)
+    # Hard limits, door to door (home in Poznań or Faenza): flights that make
+    # Paula and Basia leave earlier or arrive later are never proposed.
+    leave_home_after: time = time(5, 0)
+    arrive_home_by: time = time(20, 0)
 
 
 class Ride(BaseModel):
@@ -190,6 +194,9 @@ class Travel(BaseModel):
     office_if_arriving_by: time = time(12, 0)
     # Taxi between home and a nearby airport (e.g. POZ), per ride.
     home_rides: dict[str, Ride] = Field(default_factory=dict)
+    # A relative drives Paula and Basia (and Martin, when they fly together)
+    # between home and these airports (Google Maps time). No bus or train needed.
+    family_lifts: dict[str, Ride] = Field(default_factory=dict)
     # Drives between Italian airports and Faenza (Google Maps time, toll one way).
     italy_drives: dict[str, ItalyDrive] = Field(default_factory=dict)
     italy_fuel_eur_per_l: float = Field(default=2.22, gt=0)
@@ -365,6 +372,10 @@ class GroundOption(BaseModel):
     airport: str | None = None  # IATA code of the airport it serves
     depart: datetime | None = None
     arrive: datetime | None = None
+    # car_hire only: airports (IATA) where the car is picked up and dropped off.
+    # When set, the quote is only used if they match the flights.
+    pick_up: str | None = None
+    drop_off: str | None = None
     where: str = ""  # e.g. "BGY to BGY" or "Faenza to Bergamo airport"
     detail: str = ""  # e.g. "Ford Fiesta or similar, DiscoverCars" or train times
     price_eur: float = Field(ge=0)

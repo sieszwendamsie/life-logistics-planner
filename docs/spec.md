@@ -71,8 +71,15 @@ Personal data stays **out of git**. Real files live in `data/` (gitignored).
       Bergamo, Florence, ...).
    3. Wrocław, Warsaw Chopin or Berlin (not Modlin) to Bologna.
    4. If none of these exist, ask Claude for an alternative route.
-   Paula and Basia prefer weekend flights leaving 10:00–18:00; their flight
-   day may move up to 4 days into the stay to get one. Avoid flying on long
+   Paula and Basia: their trips are planned for their convenience. Hard rule:
+   leave home (Poznań or Faenza) no earlier than 05:00 and arrive home by
+   20:00, door to door, or the flight is not used. A relative drives them to
+   and from Poznań, Wrocław or Warsaw airports (`travel.family_lifts`, Google
+   Maps time), so they need no bus or train. Then weekend flights first, the
+   shortest door-to-door time, a departure between 10:00 and 18:00, and route
+   choice. Their flight day may move up to 4 days into the stay to get one.
+   Hire-car quotes record `pick_up` and `drop_off` airports and are only used
+   when they match the flights. Avoid flying on long
    weekends in Poland or Italy (dearer), and prefer being in Poland on public
    holidays. These are soft rules: cons in the report, ranked after timing.
    Car: only on days Martin does not work (weekends, public holidays,

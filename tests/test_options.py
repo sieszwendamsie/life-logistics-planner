@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import pytest
@@ -226,7 +226,8 @@ def test_better_route_tier_wins_over_price() -> None:
             "options": [
                 cheap_far,
                 flight("blq", "outbound", "POZ", "BLQ", "2027-02-01"),
-                flight("r", "return", "BGY", "POZ", "2027-02-22"),
+                flight("r", "return", "BGY", "POZ", "2027-02-22")
+                | {"depart": "2027-02-22T12:00", "arrive": "2027-02-22T14:00"},
             ]
         }
     )
@@ -296,7 +297,8 @@ def test_ground_costs_only_from_live_checks() -> None:
 
     flights = [
         flight("f1", "outbound", "POZ", "BGY", "2027-02-01"),
-        flight("f2", "return", "BGY", "POZ", "2027-02-22"),
+        flight("f2", "return", "BGY", "POZ", "2027-02-22")
+        | {"depart": "2027-02-22T12:00", "arrive": "2027-02-22T14:00"},
     ]
     c = with_travel(travel={**TRAVEL, "car": None})
     win = [w("2027-02-01", "2027-02-22")]
@@ -309,6 +311,12 @@ def test_ground_costs_only_from_live_checks() -> None:
     journeys = OptionsFile.model_validate({"options": flights, "ground": [quote]})
     [o2] = build_options(c, PLACES, journeys, win)
     assert o2.open_ground == 0 and o2.total_cost_eur == o.total_cost_eur + 200
+    # A quote for another drop-off airport does not fit these flights (BGY in and out).
+    wrong = quote | {"id": "w", "pick_up": "BGY", "drop_off": "BLQ", "price_eur": 50}
+    right = quote | {"id": "r", "pick_up": "BGY", "drop_off": "BGY", "price_eur": 300}
+    journeys = OptionsFile.model_validate({"options": flights, "ground": [wrong, right]})
+    [o3] = build_options(c, PLACES, journeys, win)
+    assert o3.costs["Car hire"] == 300
 
 
 def test_martin_alone_into_bologna_takes_the_train() -> None:
@@ -425,3 +433,49 @@ def test_flight_bag_price_beats_airline_table() -> None:
     [o] = build_options(c, PLACES, journeys, [w("2027-02-01", "2027-02-22")])
     # Out: 2 adults x €10 (this flight); back: 2 adults x €40 (airline table).
     assert o.costs["Checked bags"] == 2 * 10 + 2 * 40
+
+
+def test_family_window_drops_too_early_or_too_late_flights() -> None:
+    # Return BGY 08:00: leaving Faenza at 03:30 breaks the 05:00 limit.
+    # Return BLQ 14:00 (from WRO, relative's lift 2 h): home 17:30, fine.
+    journeys = OptionsFile.model_validate(
+        {
+            "options": [
+                flight("out", "outbound", "POZ", "BLQ", "2027-02-01"),
+                flight("early", "return", "BGY", "POZ", "2027-02-22"),
+                flight("ok", "return", "BLQ", "WRO", "2027-02-22")
+                | {"depart": "2027-02-22T14:00", "arrive": "2027-02-22T15:00"},
+            ]
+        }
+    )
+    travel = {
+        **TRAVEL,
+        "car": None,
+        "route_tiers": [
+            *TRAVEL["route_tiers"],
+            {"name": "far", "origins": ["WRO"], "destinations": ["BLQ"]},
+        ],
+        "family_lifts": {"WRO": {"hours": 2, "price_eur": 0}},
+    }
+    c = with_travel(travel=travel)
+    [o] = build_options(c, PLACES, journeys, [w("2027-02-01", "2027-02-22")])
+    back = o.legs[1]
+    assert back.choice.id == "ok"
+    assert not back.open_transfer  # the relative drives them, no bus needed
+    j = o.journeys[1]
+    assert "lift" in j.how
+    assert j.leave == datetime(2027, 2, 22, 11, 30)  # 14:00 - 1.5 h - 1 h to BLQ
+    assert j.arrive == datetime(2027, 2, 22, 17, 30)  # 15:00 + 0.5 h + 2 h lift
+
+
+def test_family_flight_too_late_is_not_used() -> None:
+    late = flight("late", "outbound", "POZ", "BGY", "2027-02-01") | {
+        "depart": "2027-02-01T15:30",
+        "arrive": "2027-02-01T17:30",
+    }  # + 0.5 h bags + 3 h drive = 21:00, after 20:00
+    journeys = OptionsFile.model_validate(
+        {"options": [late, flight("r", "return", "BLQ", "POZ", "2027-02-22")]}
+    )
+    c = with_travel(travel={**TRAVEL, "car": None})
+    [o] = build_options(c, PLACES, journeys, [w("2027-02-01", "2027-02-22")])
+    assert o.legs[0].missing

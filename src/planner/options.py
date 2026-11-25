@@ -208,7 +208,7 @@ def _door_hours(travel: Travel, o: TransportOption) -> float:
 
 
 def _transfer(
-    transport: OptionsFile, travel: Travel, o: TransportOption
+    transport: OptionsFile, travel: Travel, o: TransportOption, infant: bool = False
 ) -> tuple[bool, GroundOption | None]:
     """Bus or train between home and the Polish or German end of a flight.
 
@@ -224,6 +224,8 @@ def _transfer(
         return False, None
     if airport in travel.home_airports:
         return False, None
+    if infant and airport in travel.family_lifts:
+        return False, None  # a relative drives them
     margin = timedelta(hours=travel.airport_margin_hours)
     fits = []
     for g in transport.ground:
@@ -244,6 +246,36 @@ def _transfer(
     if o.direction == "outbound":
         return True, max(fits, key=lambda g: (g.depart, -g.price_eur))
     return True, min(fits, key=lambda g: (g.arrive, g.price_eur))
+
+
+def _family_door(travel: Travel, o: TransportOption) -> tuple[datetime | None, datetime | None]:
+    """Paula and Basia's door to door: (leave home, arrive home), None if unknown.
+
+    Polish side: a relative's lift (`family_lifts`) or a taxi (`home_rides`).
+    Italian side: the drive to Faenza (`italy_drives`), else `transfer_hours`.
+    """
+    out = o.direction == "outbound"
+    pl_port, it_port = (o.origin, o.destination) if out else (o.destination, o.origin)
+    lift = travel.family_lifts.get(pl_port) or travel.home_rides.get(pl_port)
+    drive = travel.italy_drives.get(it_port)
+    pl_h = lift.hours if lift else travel.transfer_hours.get(pl_port)
+    it_h = drive.hours if drive else travel.transfer_hours.get(it_port)
+    margin = timedelta(hours=travel.airport_margin_hours)
+    buffer = timedelta(hours=travel.arrival_buffer_hours)
+    first, last = (pl_h, it_h) if out else (it_h, pl_h)
+    leave = o.depart - margin - timedelta(hours=first) if first is not None else None
+    arrive = o.arrive + buffer + timedelta(hours=last) if last is not None else None
+    return leave, arrive
+
+
+def _family_window_ok(travel: Travel, o: TransportOption) -> bool:
+    """Hard rule: leave home after 05:00 and be home by 20:00 on the flight day."""
+    prefs = travel.family_flights
+    leave, arrive = _family_door(travel, o)
+    day = o.depart.date()
+    if leave is not None and leave < datetime.combine(day, prefs.leave_home_after):
+        return False
+    return arrive is None or arrive <= datetime.combine(day, prefs.arrive_home_by)
 
 
 def _flight_hours(travel: Travel, o: TransportOption, t: GroundOption | None) -> float:
@@ -272,8 +304,15 @@ def _flight(
         tier = _tier(travel, o, onward)
         if tier is None:
             continue
-        needed, t = _transfer(transport, travel, o)
+        infant = who != "Martin"
+        if infant and not _family_window_ok(travel, o):
+            continue
+        needed, t = _transfer(transport, travel, o, infant)
         hours = _flight_hours(travel, o, t)
+        if infant:
+            leave, arrive = _family_door(travel, o)
+            if leave is not None and arrive is not None:
+                hours = (arrive - leave).total_seconds() / 3600
         leg = Leg(who, d, day, "flight", o, tier, round(hours, 2), t, needed)
         # A flight you cannot get to with a checked bus or train comes last.
         key = (leg.open_transfer, tier, hours, o.price_eur)
@@ -289,8 +328,10 @@ def _family_flight(
 ) -> Leg:
     """Paula and Basia's flight: the best day between lo and hi (both included).
 
-    Weekend first, then a departure inside the preferred hours, then route
-    choice, then the fewest days moved, door-to-door time and price.
+    Flights that break the 05:00 / 20:00 door-to-door limits are never used.
+    Then: weekend first, then the shortest door-to-door time (to the half hour),
+    a departure inside the preferred hours, route choice, the fewest days moved
+    and price.
     If no day has a flight, the leg stays open on the best day to search.
     """
     prefs = travel.family_flights
@@ -305,10 +346,10 @@ def _family_flight(
         key = (
             leg.missing,
             weekday,
+            round((leg.hours or 0) * 2),
             off_hours,
             leg.tier or 0,
             abs((cand - day).days),
-            leg.hours or 0,
             leg.choice.price_eur if leg.choice else 0,
         )
         if best is None or key < best[0]:
@@ -403,6 +444,7 @@ def _ground(
     needs.insert(
         0, ("car_hire", car_start, car_end, f"Hire car {car_start:%d %b} to {car_end:%d %b}")
     )
+    pick, drop = _hire_airports(legs, car_start, car_end)
 
     found: list[tuple[GroundOption | None, str]] = []
     for kind, start, end, label in needs:
@@ -413,12 +455,28 @@ def _ground(
             and g.start == start
             and g.checked_on is not None
             and (kind == "train" or g.end == end)
+            and (kind == "train" or g.pick_up in (None, pick))
+            and (kind == "train" or g.drop_off in (None, drop))
         ]
         best = min(match, key=lambda g: g.price_eur) if match else None
         if best is not None and best.where:
             label = f"{label} ({best.where})"
         found.append((best, label))
     return found
+
+
+def _hire_airports(legs: list[Leg], start: date, end: date) -> tuple[str | None, str | None]:
+    """Airports where the hire car is picked up (arrival on `start`) and dropped off."""
+    flights = [g for g in legs if g.mode == "flight" and g.choice is not None]
+    pick = next(
+        (g.choice.destination for g in flights if g.direction == "outbound" and g.day == start),
+        None,
+    )
+    drop = next(
+        (g.choice.origin for g in flights if g.direction == "return" and g.day == end),
+        None,
+    )
+    return pick, drop
 
 
 def _by_airline(table: dict[str, float], carrier: str) -> float | None:
@@ -454,12 +512,15 @@ def _journey(c: Constraints, transport: OptionsFile, leg: Leg) -> Journey:
     how: list[str] = []
     # Polish side.
     ride = t.home_rides.get(pl_port)
+    lift = t.family_lifts.get(pl_port) if leg.with_infant else None
     pl_leave = pl_arrive = None
     if leg.transfer is not None and leg.transfer.depart and leg.transfer.arrive:
         how.append(leg.transfer.detail.split(" ")[0] or "bus")
         pl_leave, pl_arrive = leg.transfer.depart, leg.transfer.arrive
-    elif ride is not None:
-        how.append("taxi")
+    elif lift is not None or ride is not None:
+        how.append("lift" if lift is not None else "taxi")
+        ride = lift or ride
+        assert ride is not None
         if out:
             pl_leave = o.depart - margin - timedelta(hours=ride.hours)
         else:
@@ -541,7 +602,8 @@ def _extras(
             continue
         out = leg.direction == "outbound"
         pl_port, it_port = (o.origin, o.destination) if out else (o.destination, o.origin)
-        if leg.transfer is None and pl_port in t.home_rides:
+        lift = leg.with_infant and pl_port in t.family_lifts
+        if leg.transfer is None and not lift and pl_port in t.home_rides:
             taxis += t.home_rides[pl_port].price_eur
         if it_port not in t.italy_drives or _uses_train(c, leg):
             continue
