@@ -1,0 +1,7 @@
+{
+  "name": "life-logistics",
+  "version": "0.1.0",
+  "description": "Planning workflow for stays, flights and holidays between Poznań and Italy: calendar import, next-stay planning, year planning, live flight checks, and a test-before-commit hook.",
+  "author": { "name": "Martin" },
+  "repository": "https://github.com/sieszwendamsie/life-logistics-planner"
+}
