@@ -34,15 +34,39 @@ def scenario(
     back: date | None,
     label: str = "",
     top: int = 3,
+    changes: dict[str, object] | None = None,
 ) -> Scenario:
-    """Best next-stay options if Martin is back in Poznań on `back`."""
-    c = base.model_copy(update={"last_return": back}) if back else base
+    """Best next-stay options if Martin is back in Poznań on `back`.
+
+    `changes` overrides top-level constraint fields for this scenario only, for
+    example {"solo_max_days": 9} to see what a one-off exception would give.
+    """
+    update: dict[str, object] = dict(changes or {})
+    if back:
+        update["last_return"] = back
+    c = base.model_validate({**base.model_dump(), **update}) if update else base
     back = c.last_return
     rules = c.stay_rules
     earliest = back + timedelta(days=rules.min_gap_days) if back else None
     latest = back + timedelta(days=rules.max_gap_days) if back else None
     best = shortlist(build_options(c, accommodation, transport, find_windows(c)), n=top)
     return Scenario(back, label, earliest, latest, best)
+
+
+def parse_variant(text: str) -> tuple[str, dict[str, object]]:
+    """'A: drive:solo_max_days=9,min_gap_days=10' -> label and field changes."""
+    label, _, rest = text.rpartition(":")
+    changes: dict[str, object] = {}
+    for part in filter(None, (p.strip() for p in rest.split(","))):
+        key, _, value = part.partition("=")
+        low = value.strip().lower()
+        if low in ("true", "false"):
+            changes[key.strip()] = low == "true"
+        elif low.lstrip("-").isdigit():
+            changes[key.strip()] = int(low)
+        else:
+            changes[key.strip()] = value.strip()
+    return label.strip(), changes
 
 
 # ---------------------------------------------------------------- view model

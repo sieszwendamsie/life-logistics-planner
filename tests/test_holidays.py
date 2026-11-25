@@ -124,3 +124,13 @@ def test_car_only_on_days_off() -> None:
 
     assert not drives("2027-02-09", "2027-03-02")  # Tuesday to Tuesday
     assert drives("2027-03-06", "2027-03-29")  # Saturday to Easter Monday
+
+
+def test_martin_flying_on_a_working_day_is_a_con() -> None:
+    c = Constraints.model_validate(BASE)
+    flights = OptionsFile.model_validate(
+        {"options": [_flight("tue", "outbound", "2027-02-09", "12:00", "14:00")]}
+    )
+    w = Window(date(2027, 2, 9), date(2027, 2, 13), ())
+    [o] = build_options(c, HOUSE, flights, [w])
+    assert any("Martin flies on a working day (Tue 09 Feb)" in x for x in o.cons)

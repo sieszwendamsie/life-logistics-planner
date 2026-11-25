@@ -63,3 +63,13 @@ def test_report_command_writes_file(tmp_path: Path) -> None:
     )
     assert code == 0
     assert "Compare" in out.read_text()
+
+
+def test_variant_changes_rules_for_one_scenario() -> None:
+    from planner.report import parse_variant
+
+    label, changes = parse_variant("Drive early:solo_max_days=9,avoid=true")
+    assert label == "Drive early" and changes == {"solo_max_days": 9, "avoid": True}
+    c, acc, tr = _data()
+    s = scenario(c, acc, tr, None, "x", changes={"solo_max_days": 2})
+    assert all(o.solo_nights <= 2 for o in s.options)
