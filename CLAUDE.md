@@ -29,6 +29,8 @@ and say so when a better existing tool already does the job.
 ## Rules
 - Prefer existing tools, MCP connectors and libraries over custom code.
 - Never purchase, book or confirm anything. Prepare proposals only.
+- Flight times and prices only from a live airline or Momondo search; never from
+  schedule sites. If you cannot check live, say so instead of guessing.
 - Only add events to Google Calendar after Martin approves a plan.
 - Never commit secrets, tokens or personal booking data.
 - Keep changes small; one feature per branch and pull request.
