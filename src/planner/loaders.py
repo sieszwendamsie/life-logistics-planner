@@ -1,10 +1,12 @@
 """Read the YAML planning files and check them against the models."""
 
 from pathlib import Path
+
 import yaml
 from pydantic import BaseModel
 
 from planner.models import AccommodationFile, Constraints, OptionsFile
+
 
 def load_model[ModelT: BaseModel](path: Path, model: type[ModelT]) -> ModelT:
     """Parse one YAML file and validate it. Raises ValidationError on bad data."""
