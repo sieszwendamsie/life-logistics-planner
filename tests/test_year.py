@@ -264,6 +264,8 @@ def test_no_holiday_periods_are_respected() -> None:
     r = build_year(_c(no_holiday=quiet), ACC)
     for b in r.second_options + r.long_options:
         assert not any(b.start <= q.end and q.start <= b.end for q in quiet)
-    # Without the rule the cheapest two weeks are in the autumn.
-    free = build_year(_c(), ACC)
-    assert free.second_pick and free.second_pick.start.month >= 10
+    # A pinned holiday inside a quiet period is refused, so none lands there.
+    from planner.year import check_year
+
+    c = _c(no_holiday=quiet, second_holiday_start=date(2027, 10, 23))
+    assert not any("no-holiday" in p for p in check_year(c, build_year(c, ACC)))

@@ -35,7 +35,7 @@ Real values (home address, prices) live in the gitignored `data/` files.
   - The winter shutdown is usually busy: add at most 1 to 2 extra days to it.
 - **Avoid peak prices** where possible: school-holiday peaks and long weekends.
 - **Where**: not part of the plan yet.
-- **No longer holidays from mid-September to the end of the year, or in January
+- **No longer holidays from about 20 September to the end of the year, or in January
   and February** (busy at work; Martin, 26 Nov 2026). Only long weekends there
   (`year_plan.no_holiday`). The Christmas shutdown plus its 1 to 2 extra days
   still counts.
