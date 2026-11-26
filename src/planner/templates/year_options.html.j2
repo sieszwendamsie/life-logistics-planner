@@ -1,0 +1,93 @@
+{% from "_wall.j2" import wall %}
+<title>{{ year }} Year Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+{% include "_year_style.j2" %}
+<style>
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.opt h3 { margin: 0; font-family: var(--font-head); font-size: 1.1rem; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 0.9rem; }
+.kv span:nth-child(odd) { color: var(--muted); }
+.kv span:nth-child(even) { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+.best { color: var(--accent); }
+nav.jump { display: flex; flex-wrap: wrap; gap: 8px; }
+nav.jump a { color: var(--accent); font-weight: 600; text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 2px 12px; background: var(--surface); }
+nav.jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.optsec { display: grid; gap: 14px; border-top: 1px solid var(--line); padding-top: 24px; }
+</style>
+<main>
+  <header style="display:grid; gap:8px">
+    <h1>{{ year }}: three ways to plan the year</h1>
+    <p class="sub">Each option keeps your rules: about 4 weeks around the summer shutdown, two weeks in March or April, at most 2 extra days at Christmas, 55–65% remote work and the fewest trips. They differ in which holidays and bridge days you take. Nothing is booked or priced; flights are checked live per stay later.</p>
+  </header>
+
+  <section>
+    <h2>Side by side</h2>
+    <div class="opts">
+      {% for o in options %}
+      <div class="card opt">
+        <h3>{{ o.r.label }}</h3>
+        <p class="note">{{ o.r.note }}</p>
+        <div class="kv">
+          <span>Days off in breaks of 3+ days</span><span class="{{ 'best' if o.best_off }}">{{ o.r.days_off_in_breaks }}</span>
+          <span>Paid days used</span><span class="{{ 'best' if o.best_paid }}">{{ o.r.paid_days_off }}</span>
+          <span>Days off per paid day</span><span>{{ '%.1f' | format(o.r.days_off_in_breaks / o.r.paid_days_off) }}</span>
+          <span>Breaks of 3+ days</span><span>{{ o.r.breaks | length }}</span>
+          <span>Round trips to Faenza</span><span class="{{ 'best' if o.best_trips }}">{{ o.r.trips }}</span>
+          <span>Nights in Faenza</span><span>{{ o.faenza }}</span>
+          <span>Remote work</span><span>{{ (o.r.remote_share * 100) | round | int }}%</span>
+        </div>
+        <a href="#{{ o.anchor }}" class="note">See the calendar ↓</a>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="note">Green marks the best value in each row. Every trip starts and ends on a weekend or holiday, so travel never costs a working day. "Days off in breaks" counts only days of {{ year }}.</p>
+  </section>
+
+  {% for o in options %}
+  <section class="optsec" id="{{ o.anchor }}">
+    <h2>{{ o.r.label }}</h2>
+    <p class="sub">{{ o.r.note }}</p>
+    {{ wall(o.months, year) }}
+    <div class="grid2">
+      <div class="card table-wrap">
+        <h3 style="margin:0">Breaks of 3 days or more</h3>
+        <table>
+          <thead><tr><th>Dates</th><th>Days</th><th>Paid</th><th>Why</th></tr></thead>
+          <tbody>
+          {% for b in o.breaks %}
+            <tr><td class="num">{{ b.dates }}</td><td class="num">{{ b.days }}</td><td class="num">{{ b.paid }}</td><td>{{ b.why }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card table-wrap">
+        <h3 style="margin:0">Stays in Faenza</h3>
+        <table>
+          <thead><tr><th>Out</th><th>Home</th><th>Nights</th><th>Notes</th></tr></thead>
+          <tbody>
+          {% for st in o.r.stays %}
+            <tr>
+              <td class="num">{{ st.start.strftime('%a %d %b') }}</td>
+              <td class="num">{{ st.end.strftime('%a %d %b') }}</td>
+              <td class="num">{{ st.nights }}</td>
+              <td>{% if st.fixed %}{{ st.note }}. {% endif %}{% if st.blocked_nights %}La Suite blocked {{ st.blocked_nights }} night{{ 's' if st.blocked_nights != 1 }}. {% endif %}{% if st.pl_holidays %}Polish holiday: {{ st.pl_holidays | join(', ') }}.{% endif %}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  {% endfor %}
+
+  <section class="card">
+    <h2>What all three assume</h2>
+    <ul>
+      <li>Holidays cost only their working days. Weekends, Italian holidays (2 June included) and shutdowns are free; Polish holidays are paid working days.</li>
+      <li>Bridge days are paid days off next to an Italian holiday that turn it into a long weekend. No Faenza stay is planned over them.</li>
+      <li>Basia's birthday (5–13 Mar) and Easter (26–29 Mar) are at home in Poznań in every option.</li>
+      <li>February stay 31 Jan to 28 Feb is fixed (not approved yet).</li>
+      <li>School holidays used for prices: {% for p in peaks %}{{ p.name }} {{ p.start.strftime('%d %b') }}–{{ p.end.strftime('%d %b') }}{{ ', ' if not loop.last }}{% endfor %}.</li>
+    </ul>
+  </section>
+</main>

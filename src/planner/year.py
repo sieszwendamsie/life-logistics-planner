@@ -400,6 +400,10 @@ class YearResult:
     stays: list[Stay]
     workdays: int = 0  # working days in the year, holidays taken out
     office_days: int = 0  # working days inside Faenza stays
+    label: str = ""
+    note: str = ""
+    bridges: list[date] = field(default_factory=list)  # paid days for long weekends
+    breaks: list[Block] = field(default_factory=list)  # every run of 3+ days off
 
     @property
     def holidays(self) -> list[Block]:
@@ -411,7 +415,22 @@ class YearResult:
 
     @property
     def paid_days_off(self) -> int:
-        return sum(b.paid_days for b in self.holidays)
+        return sum(b.paid_days for b in self.holidays) + len(self.bridges)
+
+    @property
+    def days_off_in_breaks(self) -> int:
+        """Days of the year in breaks of 3 days or more (holidays, long weekends,
+        shutdowns); a Christmas break is counted only for its days in this year."""
+        y = self.plan.year
+        return sum(
+            (min(b.end, date(y, 12, 31)) - max(b.start, date(y, 1, 1))).days + 1
+            for b in self.breaks
+        )
+
+    @property
+    def trips(self) -> int:
+        """Round trips to Faenza (each is two travel days)."""
+        return len(self.stays)
 
 
 def _pick(options: list[Block], start: date | None) -> Block | None:
@@ -484,7 +503,63 @@ def _plan_with_share(
     return best[1], best[2], best[3], best[4]
 
 
-def build_year(c: Constraints, acc: AccommodationFile) -> YearResult:
+def breaks(c: Constraints, year: int, holidays: list[Block], min_days: int = 3) -> list[Block]:
+    """Every run of at least `min_days` days off that touches the year (weekends,
+    holidays, shutdowns, leave and bridge days), with its full dates."""
+    plan = c.year_plan
+    assert plan is not None
+    first, last = date(year, 1, 1) - timedelta(days=21), date(year, 12, 31) + timedelta(days=21)
+
+    def off(d: date) -> bool:
+        return c.day_off(d) or any(b.start <= d <= b.end for b in holidays)
+
+    out, d = [], first
+    while d <= last:
+        if not off(d):
+            d += DAY
+            continue
+        start = d
+        while d <= last and off(d):
+            d += DAY
+        end = d - DAY
+        if (d - start).days >= min_days and start.year <= year <= end.year:
+            out.append(_block(c, plan, start, end))
+    return out
+
+
+def with_bridges(c: Constraints, days: list[date]) -> Constraints:
+    """The constraints with bridge days taken as leave (days off that cost pay)."""
+    if not days:
+        return c
+    extra = [DateRange(start=d, end=d) for d in days]
+    return c.model_copy(update={"leave": [*c.leave, *extra]})
+
+
+def build_options(c: Constraints, acc: AccommodationFile) -> list[YearResult]:
+    """One result per `year_plan.options` entry (or the single plan if none)."""
+    plan = c.year_plan
+    if plan is None:
+        raise ValueError("constraints have no year_plan section")
+    if not plan.options:
+        return [build_year(c, acc)]
+    results = []
+    for opt in plan.options:
+        changed = plan.model_copy(
+            update={
+                "long_holiday_start": opt.long_holiday_start or plan.long_holiday_start,
+                "second_holiday_start": opt.second_holiday_start or plan.second_holiday_start,
+                "options": [],
+            }
+        )
+        r = build_year(c.model_copy(update={"year_plan": changed}), acc, opt.bridge_days)
+        r.label, r.note = opt.label, opt.note
+        results.append(r)
+    return results
+
+
+def build_year(
+    c: Constraints, acc: AccommodationFile, bridge_days: list[date] | None = None
+) -> YearResult:
     plan = c.year_plan
     if plan is None:
         raise ValueError("constraints have no year_plan section")
@@ -501,7 +576,14 @@ def build_year(c: Constraints, acc: AccommodationFile) -> YearResult:
         second_options = [*second_holidays(c, plan, long_pick, pinned=start), *second_options]
     second_pick = _pick(second_options, start)
     taken = [b for b in (long_pick, second_pick) if b]
-    rhythm, stays, work, office = _plan_with_share(c, acc, plan, taken)
+    # Bridge days are leave: no stay is planned over them and they are not worked.
+    bridges = sorted(
+        d
+        for d in (bridge_days or [])
+        if not c.day_off(d) and not any(b.start <= d <= b.end for b in taken)
+    )
+    cb = with_bridges(c, bridges)
+    rhythm, stays, work, office = _plan_with_share(cb, acc, plan, taken)
     return YearResult(
         plan=rhythm,
         long_options=long_options,
@@ -513,6 +595,8 @@ def build_year(c: Constraints, acc: AccommodationFile) -> YearResult:
         stays=stays,
         workdays=work,
         office_days=office,
+        bridges=bridges,
+        breaks=breaks(cb, plan.year, taken),
     )
 
 

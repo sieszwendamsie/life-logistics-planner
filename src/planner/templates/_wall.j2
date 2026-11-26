@@ -1,0 +1,21 @@
+{% macro wall(months, year) %}
+    <div class="legend">
+      <span style="--c: var(--home)">Poznań</span>
+      <span style="--c: var(--stay)">Faenza</span>
+      <span style="--c: var(--solo)">Faenza, La Suite blocked (you alone)</span>
+      <span style="--c: var(--holiday)">Holiday, shutdown, Italian holiday or its long weekend</span>
+      <span class="ring" style="--c: var(--holiday)">Same, during a Faenza stay</span>
+      <span class="dot" style="--c: var(--it)">Italian holiday</span>
+      <span class="dot" style="--c: var(--pl)">Polish holiday</span>
+    </div>
+    <div class="wall" role="img" aria-label="Calendar of {{ year }} coloured by where you are">
+      {% for name, cells in months %}
+      <div class="month">
+        <div class="m">{{ name }}</div>
+        {% for cell in cells %}
+        <div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}{% if cell.off %} off{% endif %}" title="{{ cell.title }}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}</div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+{% endmacro %}

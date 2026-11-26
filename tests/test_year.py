@@ -226,3 +226,31 @@ def test_check_year_reports_broken_rules() -> None:
     assert "Second holiday starts in month" in problems
     r.long_pick = None
     assert "No long holiday" in " ".join(check_year(c, r))
+
+
+def test_options_compare_bridges_and_holidays() -> None:
+    from planner.models import YearOption
+    from planner.year import build_options
+    from planner.year_report import render_options
+
+    opts = [
+        YearOption(label="A", second_holiday_start=date(2027, 3, 6)),
+        YearOption(
+            label="B",
+            second_holiday_start=date(2027, 3, 6),
+            # Thu + Fri after Wed 8 Dec make a 5-day break; a Saturday is ignored.
+            bridge_days=[date(2027, 12, 9), date(2027, 12, 10), date(2027, 12, 11)],
+        ),
+    ]
+    c = _c(second_holiday_months=[3, 4], options=opts)
+    a, b = build_options(c, ACC)
+    assert (a.label, b.label) == ("A", "B")
+    assert b.bridges == [date(2027, 12, 9), date(2027, 12, 10)]
+    assert b.paid_days_off == a.paid_days_off + 2
+    dec = [x for x in b.breaks if x.start <= date(2027, 12, 8) <= x.end]
+    assert dec and (dec[0].start, dec[0].end) == (date(2027, 12, 8), date(2027, 12, 12))
+    assert b.days_off_in_breaks == a.days_off_in_breaks + 5
+    for st in b.stays:  # no stay over a bridge day
+        assert not any(st.start <= d <= st.end for d in b.bridges)
+    html = render_options(c, [a, b])
+    assert "Bridge day, paid" in html and "Side by side" in html

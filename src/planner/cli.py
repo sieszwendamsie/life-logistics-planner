@@ -192,7 +192,26 @@ def _cmd_year(args: argparse.Namespace) -> int:
     if c.year_plan is None:
         print("No year_plan section in the constraints. See examples/constraints.yaml.")
         return 1
-    result = build_year(c, load_accommodation(args.accommodation))
+    acc = load_accommodation(args.accommodation)
+    if c.year_plan.options:
+        from planner.year import build_options
+
+        results = build_options(c, acc)
+        for r in results:
+            print(f"### {r.label}: {r.note}")
+            print(
+                f"{r.days_off_in_breaks} days off in breaks of 3+ days for {r.paid_days_off} "
+                f"paid days; {r.trips} round trips; bridge days: "
+                + (", ".join(f"{d:%d %b}" for d in r.bridges) or "none")
+            )
+            print(text(c, r))
+            print()
+        if args.out:
+            from planner.year_report import render_options
+
+            print(f"Wrote {write(render_options(c, results), args.out)}")
+        return 0
+    result = build_year(c, acc)
     print(text(c, result))
     if args.out:
         from planner.year_report import render_year

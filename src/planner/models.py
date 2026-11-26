@@ -254,6 +254,17 @@ class FixedStay(DateRange):
     note: str = ""
 
 
+class YearOption(BaseModel):
+    """One alternative year: its own holidays and bridge days (`planner year`)."""
+
+    label: str
+    note: str = ""
+    long_holiday_start: date | None = None
+    second_holiday_start: date | None = None
+    # Paid working days taken off to turn a public holiday into a long weekend.
+    bridge_days: list[date] = Field(default_factory=list)
+
+
 class YearPlan(BaseModel):
     """Settings for `planner year`: the draft plan of a whole year.
 
@@ -286,6 +297,8 @@ class YearPlan(BaseModel):
     long_holiday_start: date | None = None
     second_holiday_start: date | None = None
     peaks: list[Peak] = Field(default_factory=list)
+    # Alternatives to compare side by side; empty means one plan from the settings above.
+    options: list[YearOption] = Field(default_factory=list)
 
 
 class Constraints(BaseModel):

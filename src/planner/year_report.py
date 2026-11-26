@@ -24,6 +24,10 @@ class Cell:
     off: bool = False  # a free day off inside a Faenza stay (outlined in holiday colour)
 
 
+def _span(a: date, b: date) -> list[date]:
+    return [a + timedelta(days=i) for i in range((b - a).days + 1)]
+
+
 def free_days_off(c: Constraints, year: int) -> dict[date, str]:
     """Days off that cost nothing beyond weekends: shutdowns and Italian holidays on
     a weekday, each with the whole run of free days around it (a long weekend)."""
@@ -36,6 +40,7 @@ def free_days_off(c: Constraints, year: int) -> dict[date, str]:
     for h in c.holidays:
         if h.country == "IT" and h.day.weekday() < 5:
             seeds.setdefault(h.day, f"Italian holiday: {h.name}" if h.name else "Italian holiday")
+    leave = {d for r in c.leave for d in _span(r.start, r.end)}
     # Mark every run of days off (weekends included) that holds such a day.
     days: dict[date, str] = {}
     d = date(year, 1, 1) - timedelta(days=14)
@@ -53,7 +58,10 @@ def free_days_off(c: Constraints, year: int) -> dict[date, str]:
             continue
         for x in run:
             if x.year == year:
-                days[x] = seeds.get(x) or f"Long weekend ({why})"
+                if x in leave:
+                    days[x] = f"Bridge day, paid ({why})"
+                else:
+                    days[x] = seeds.get(x) or f"Long weekend ({why})"
     return days
 
 
@@ -203,4 +211,65 @@ def render_year(c: Constraints, r: YearResult) -> str:
         stays=r.stays,
         assumptions=assumptions(c, r),
         questions=questions(c, r),
+    )
+
+
+def _why(c: Constraints, r: YearResult, b: Block) -> str:
+    """What makes a break: the planned holiday, a shutdown or an Italian holiday."""
+    for h in r.holidays:
+        if h.start <= b.start and b.end <= h.end or (b.start <= h.start and h.end <= b.end):
+            if h == r.long_pick:
+                return "Summer holiday (around the shutdown)"
+            return "Two-week holiday"
+    if any(s.start <= b.end and b.start <= s.end for s in c.shutdown):
+        return "Christmas shutdown" if b.start.month in (12, 1) else "Shutdown"
+    names = [
+        h.name for h in c.holidays if h.country == "IT" and b.start <= h.day <= b.end and h.name
+    ]
+    if names:
+        return "Long weekend: " + ", ".join(dict.fromkeys(names))
+    return "Days off"
+
+
+def render_options(c: Constraints, results: list[YearResult]) -> str:
+    """Several alternative years on one page, compared side by side."""
+    from planner.year import with_bridges
+
+    views = []
+    for i, r in enumerate(results):
+        cb = with_bridges(c, r.bridges)
+        brks = []
+        for b in r.breaks:
+            v = _block_view(b)
+            v["paid"] = sum(1 for d in r.bridges if b.start <= d <= b.end) + sum(
+                h.paid_days for h in r.holidays if b.start <= h.start and h.end <= b.end
+            )
+            v["why"] = _why(c, r, b)
+            brks.append(v)
+        views.append(
+            {
+                "r": r,
+                "anchor": f"option-{'abc'[i] if i < 3 else i}",
+                "months": _months(cb, r),
+                "breaks": brks,
+                "faenza": sum(st.nights for st in r.stays),
+            }
+        )
+    for key, attr, best in (
+        ("best_off", "days_off_in_breaks", max),
+        ("best_paid", "paid_days_off", min),
+        ("best_trips", "trips", min),
+    ):
+        top = best(getattr(v["r"], attr) for v in views)
+        for v in views:
+            v[key] = len(views) > 1 and getattr(v["r"], attr) == top
+    env = Environment(
+        loader=PackageLoader("planner", "templates"),
+        autoescape=select_autoescape(["html", "j2"]),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+    year = results[0].plan.year
+    return env.get_template("year_options.html.j2").render(
+        options=views, year=year, peaks=results[0].plan.peaks
     )
