@@ -1,0 +1,34 @@
+# Rebuilds the planner pages every morning, without Claude. The result is a downloadable
+# artifact (private to repo members). Personal data comes from repository secrets, never
+# from the repo. Setup: docs/standalone.md.
+name: build-site
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Write data files from secrets
+        env:
+          C: ${{ secrets.PLANNER_CONSTRAINTS }}
+          A: ${{ secrets.PLANNER_ACCOMMODATION }}
+          O: ${{ secrets.PLANNER_OPTIONS }}
+        run: |
+          mkdir -p data
+          printf '%s\n' "$C" > data/constraints.yaml
+          printf '%s\n' "$A" > data/accommodation.yaml
+          printf '%s\n' "$O" > data/options.yaml
+      - name: Build
+        env:
+          PLANNER_ICS: ${{ secrets.PLANNER_ICS }}
+        run: uv run planner build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: planner-site
+          path: out/site
+          retention-days: 7

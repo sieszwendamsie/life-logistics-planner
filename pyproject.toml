@@ -4,9 +4,11 @@ version = "0.1.0"
 description = "Personal planner for stays, office days and travel between Poznań and Italy"
 requires-python = ">=3.12"
 dependencies = [
+    "icalendar>=7.3.2",
     "jinja2>=3.1.6",
     "pydantic>=2.14.4",
     "pyyaml>=6.0.4",
+    "recurring-ical-events>=3.8.2",
 ]
 
 [project.scripts]

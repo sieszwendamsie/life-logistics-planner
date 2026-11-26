@@ -149,7 +149,106 @@ def build_parser() -> argparse.ArgumentParser:
             f"--{name}", type=Path, default=default, help=f"{name} file (default: {default})"
         )
     year.add_argument("--out", type=Path, help="also write the plan as an HTML page here")
+    imp = sub.add_parser("import-ics", help="fill data/ from .ics files or iCal links, no Claude")
+    _ics_args(imp)
+    build = sub.add_parser("build", help="import, then write the whole site to out/site/")
+    _ics_args(build, required=False)
+    build.add_argument("--transport", type=Path, default=DEFAULT_TRANSPORT)
+    build.add_argument("--site", type=Path, default=Path("out/site"), help="output folder")
     return parser
+
+
+def _ics_args(p: argparse.ArgumentParser, required: bool = True) -> None:
+    p.add_argument(
+        "--ics",
+        action="append",
+        default=[],
+        metavar="CALENDAR=PATH_OR_URL",
+        help="e.g. Travel=travel.ics (repeat). Calendars: Travel, Family, "
+        "Important, Work, 'Holidays in Poland'. Or set PLANNER_ICS (one per line).",
+    )
+    p.add_argument("--constraints", type=Path, default=DEFAULT_CONSTRAINTS)
+    p.add_argument("--accommodation", type=Path, default=DEFAULT_ACCOMMODATION)
+
+
+def _cmd_import_ics(args: argparse.Namespace) -> int:
+    import os
+
+    import yaml
+
+    from planner.ics import apply_events, load_ics, read_events
+
+    specs = args.ics or [x for x in os.environ.get("PLANNER_ICS", "").splitlines() if x.strip()]
+    if not specs:
+        print("No calendars given. Use --ics Travel=file.ics or set PLANNER_ICS.")
+        return 1
+    for path in (args.constraints, args.accommodation):
+        if not path.exists():
+            print(f"No file at {path}. Copy it from examples/ first.")
+            return 1
+    c = yaml.safe_load(args.constraints.read_text(encoding="utf-8"))
+    a = yaml.safe_load(args.accommodation.read_text(encoding="utf-8"))
+    hz = c["horizon"]
+    events = []
+    for spec in specs:
+        name, _, src = spec.partition("=")
+        evs = read_events(name.strip(), load_ics(src.strip()), hz["start"], hz["end"])
+        print(f"{name.strip()}: {len(evs)} events")
+        events += evs
+    todo = apply_events(c, a, events)
+    load_constraints_data(c)  # validate before writing
+    args.constraints.write_text(yaml.safe_dump(c, allow_unicode=True, sort_keys=False), "utf-8")
+    args.accommodation.write_text(yaml.safe_dump(a, allow_unicode=True, sort_keys=False), "utf-8")
+    print(f"Wrote {args.constraints} and {args.accommodation} (comments in them are not kept).")
+    for line in todo:
+        print(f"NEEDS YOU: {line}")
+    return 0
+
+
+def load_constraints_data(data: dict):
+    from planner.models import Constraints
+
+    return Constraints.model_validate(data)
+
+
+def _cmd_build(args: argparse.Namespace) -> int:
+    import os
+
+    if args.ics or os.environ.get("PLANNER_ICS"):
+        if _cmd_import_ics(args):
+            return 1
+    for path in (args.constraints, args.accommodation, args.transport):
+        if not path.exists():
+            print(f"No file at {path}. See examples/.")
+            return 1
+    c = load_constraints(args.constraints)
+    acc = load_accommodation(args.accommodation)
+    transport = load_options(args.transport)
+    site = args.site
+    pages = []
+    back = c.last_return
+    if back:
+        sc = [scenario(c, acc, transport, back, "", 3, {})]
+        write(render(sc, c, acc), site / "report.html")
+        pages.append(("Next stay: options", "report.html"))
+    if c.year_plan:
+        from planner.year_report import render_year
+
+        write(render_year(c, build_year(c, acc)), site / "year.html")
+        pages.append(("Year plan", "year.html"))
+    month = f"{(back or date.today()):%Y-%m}"
+    routes_text = table(route_windows(c.travel), month)
+    write("<pre>" + routes_text.replace("<", "&lt;") + "</pre>", site / "routes.html")
+    pages.append(("Flight times per route (Ryanair links)", "routes.html"))
+    items = "".join(f'<li><a href="{h}">{t}</a></li>' for t, h in pages)
+    write(
+        '<meta name="viewport" content="width=device-width"><title>Planner</title>'
+        f"<h1>Planner</h1><ul>{items}</ul><p>Built {date.today()}. "
+        "Flight prices and times are NOT checked here.</p>",
+        site / "index.html",
+    )
+    print(f"Wrote {site}/index.html")
+    return 0
 
 
 def _cmd_fares(args: argparse.Namespace) -> int:
@@ -358,5 +457,9 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_fares(args)
     if args.command == "year":
         return _cmd_year(args)
+    if args.command == "import-ics":
+        return _cmd_import_ics(args)
+    if args.command == "build":
+        return _cmd_build(args)
     parser.print_help()
     return 0
