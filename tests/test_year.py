@@ -400,3 +400,19 @@ def test_max_trips_caps_the_number_of_stays() -> None:
     capped = build_year(_c(max_trips=4, away_nights=(14, 42)), ACC)
     assert capped.stays and capped.trips <= 4
     assert capped.trips <= free.trips
+
+
+def test_option_fixed_stays_and_extra_holidays() -> None:
+    from planner.models import FixedStay, YearOption
+    from planner.year import build_options
+
+    opt = YearOption(
+        label="D",
+        long_holiday_days=(21, 23),
+        fixed_stays=[FixedStay(start=date(2027, 6, 27), end=date(2027, 7, 25))],
+        extra_holidays=[DateRange(start=date(2027, 9, 11), end=date(2027, 9, 19))],
+    )
+    (r,) = build_options(_c(options=[opt]), ACC)
+    assert any(st.start == date(2027, 6, 27) and st.fixed for st in r.stays)
+    assert any(b.start == date(2027, 9, 11) for b in r.holidays)
+    assert r.long_pick and 21 <= r.long_pick.days <= 23

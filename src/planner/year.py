@@ -135,8 +135,15 @@ def second_holidays(
     first, last = max(plan.start, date(plan.year, 1, 1)), date(plan.year, 12, 31)
     away = timedelta(days=plan.holiday_gap_days)
     found = []
+    busy = _busy(c, plan)
+    if plan.second_holiday_joined:
+        # The holiday may start the day a decided stay ends (or end the day one starts).
+        busy = [
+            DateRange(start=r.start + DAY, end=r.end - DAY) if r in plan.fixed_stays else r
+            for r in busy
+        ]
     for b in holiday_blocks(c, plan, first, last, lo, hi):
-        if any(_overlaps(b.start, b.end, r) for r in [*_busy(c, plan), *c.shutdown]):
+        if any(_overlaps(b.start, b.end, r) for r in [*busy, *c.shutdown]):
             continue
         if long and b.start < long.end + away and long.start - away < b.end:
             continue
@@ -408,13 +415,14 @@ def plan_stays(
     ]
     for st, f in zip(fixed, plan.fixed_stays, strict=True):
         st.note = f.note
+        st.long_weekends = _trip_long_weekends(c, st.start, st.end, bridges)
     no_go_free = [*no_go, *plan.fixed_stays]
     nodes = sorted(
         [*fixed, *_candidates(c, acc, plan, no_go_free, xmas, bridges)], key=lambda s: s.start
     )
     if joined:
         for st in nodes:
-            if not st.fixed and (st.end == joined.start or st.start == joined.end):
+            if st.end == joined.start or st.start == joined.end:
                 st.joined = True
                 st.cost -= 200  # strongly prefer a chain that travels on to the holiday
     must = [*plan.fixed_stays, *c.martin_italy()]
@@ -495,11 +503,12 @@ class YearResult:
     bridges: list[date] = field(default_factory=list)  # paid days for long weekends
     breaks: list[Block] = field(default_factory=list)  # every run of 3+ days off
     suite_blocked: list[date] = field(default_factory=list)  # nights La Suite is not free
+    extra: list[Block] = field(default_factory=list)  # holidays on given dates
     other_travel: list[DateRange] = field(default_factory=list)  # e.g. UK visits
 
     @property
     def holidays(self) -> list[Block]:
-        return [b for b in (self.long_pick, self.second_pick) if b]
+        return [b for b in (self.long_pick, self.second_pick) if b] + self.extra
 
     @property
     def remote_share(self) -> float:
@@ -697,6 +706,9 @@ def build_options(c: Constraints, acc: AccommodationFile) -> list[YearResult]:
                     if opt.long_weekends_anywhere is None
                     else opt.long_weekends_anywhere
                 ),
+                "long_holiday_days": opt.long_holiday_days or plan.long_holiday_days,
+                "fixed_stays": sorted([*plan.fixed_stays, *opt.fixed_stays], key=lambda f: f.start),
+                "extra_holidays": [*plan.extra_holidays, *opt.extra_holidays],
                 "options": [],
             }
         )
@@ -727,7 +739,8 @@ def build_year(
     if start and not _pick(second_options, start):
         second_options = [*second_holidays(c, plan, long_pick, pinned=start), *second_options]
     second_pick = _pick(second_options, start)
-    taken = [b for b in (long_pick, second_pick) if b]
+    extra = [_block(c, plan, h.start, h.end) for h in plan.extra_holidays]
+    taken = [b for b in (long_pick, second_pick) if b] + extra
     # Bridge days are leave (not worked). A stay may hold them only next to its
     # travel days, so the long weekend is spent in Faenza.
     bridges = sorted(
@@ -758,6 +771,7 @@ def build_year(
         breaks=breaks(cb, plan.year, taken),
         suite_blocked=_blocked(acc, date(plan.year, 1, 1), date(plan.year + 1, 1, 1)),
         other_travel=list(c.other_travel),
+        extra=extra,
     )
 
 

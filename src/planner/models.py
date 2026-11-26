@@ -271,6 +271,13 @@ class YearOption(BaseModel):
     other_travel: list[DateRange] = Field(default_factory=list)
     # Paid working days taken off to turn a public holiday into a long weekend.
     bridge_days: list[date] = Field(default_factory=list)
+    # Stays already chosen for this option (added to the plan's fixed stays), e.g.
+    # flying on from a UK visit straight to Faenza.
+    fixed_stays: list[FixedStay] = Field(default_factory=list)
+    # Length of the summer holiday in days (min, max), if not the plan's.
+    long_holiday_days: tuple[int, int] | None = None
+    # More holidays on given dates (e.g. a week in mid-September).
+    extra_holidays: list[DateRange] = Field(default_factory=list)
 
 
 class YearPlan(BaseModel):
@@ -310,6 +317,8 @@ class YearPlan(BaseModel):
     # If set: nights between two stays, holidays included except the long summer
     # holiday, i.e. time away from the Faenza office (Martin: 4 to 6 weeks).
     away_nights: tuple[int, int] | None = None
+    # Holidays on given dates, besides the summer and the second one.
+    extra_holidays: list[DateRange] = Field(default_factory=list)
     # At most this many Faenza trips in the year (Martin: keep travel to a minimum).
     # Wins over `away_nights`: the longest time away is stretched a week at a time
     # until the trips fit, and the plan says so.
