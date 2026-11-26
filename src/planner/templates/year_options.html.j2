@@ -7,6 +7,7 @@
           <span>Breaks of 3+ days</span><span>{{ o.r.breaks | length }}</span>
           <span>Round trips to Faenza</span><span class="{{ 'best' if o.best_trips }}">{{ o.r.trips }}</span>
           <span>Nights in Faenza</span><span>{{ o.faenza }}</span>
+        {% if o.cost_total is not none %}<span>Estimated cost of Faenza trips</span><span>€{{ '{:,}'.format(o.cost_total) }}{% if o.cost_missing %}*{% endif %}</span>{% endif %}
           <span>Working days in Faenza</span><span>{{ ((1 - o.r.remote_share) * 100) | round | int }}%</span>
         </div>
 {% endmacro %}
@@ -71,14 +72,16 @@ nav.jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
       <div class="card table-wrap">
         <h3 style="margin:0">Stays in Faenza</h3>
         <table>
-          <thead><tr><th>Out</th><th>Home</th><th>Nights</th><th>Notes</th></tr></thead>
+          <thead><tr><th>Out</th><th>Home</th><th>Nights</th>{% if costs %}<th>Est. cost</th>{% endif %}<th>Notes</th></tr></thead>
           <tbody>
           {% for st in o.r.stays %}
+            {% set k = o.stay_costs[loop.index0] %}
             <tr>
               <td class="num">{{ st.start.strftime('%a %d %b') }}</td>
               <td class="num">{{ st.end.strftime('%a %d %b') }}</td>
               <td class="num">{{ st.nights }}</td>
-              <td>{% if st.fixed %}{{ st.note }}. {% endif %}{% if st.blocked_nights %}La Suite blocked {{ st.blocked_nights }} night{{ 's' if st.blocked_nights != 1 }}. {% endif %}{% if st.long_weekends %}Long weekend in Faenza: {{ st.long_weekends | join(', ') }}. {% endif %}{% if st.pl_holidays %}Polish holiday: {{ st.pl_holidays | join(', ') }}.{% endif %}</td>
+              {% if costs %}<td class="num">{% if k %}€{{ '{:,}'.format(k.la_suite + k.elsewhere + k.car + k.flights) }}{% if k.missing %}*{% endif %}{% endif %}</td>{% endif %}
+              <td>{% if k %}La Suite €{{ k.la_suite }}{% if k.elsewhere %}, elsewhere €{{ k.elsewhere }}{% endif %}, car €{{ k.car }}, family flights {% if k.missing %}not on sale yet*{% else %}€{{ k.flights }} ({{ k.out.route }} {{ k.out.day[8:10] }}/{{ k.out.day[5:7] }} {{ k.out.dep }}, {{ k.back.route }} {{ k.back.day[8:10] }}/{{ k.back.day[5:7] }} {{ k.back.dep }}){% endif %}. {% endif %}{% if st.fixed %}{{ st.note }}. {% endif %}{% if st.blocked_nights %}La Suite blocked {{ st.blocked_nights }} night{{ 's' if st.blocked_nights != 1 }}. {% endif %}{% if st.long_weekends %}Long weekend in Faenza: {{ st.long_weekends | join(', ') }}. {% endif %}{% if st.pl_holidays %}Polish holiday: {{ st.pl_holidays | join(', ') }}.{% endif %}</td>
             </tr>
           {% endfor %}
           </tbody>
@@ -88,6 +91,15 @@ nav.jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
   </section>
   {% endfor %}
 
+
+  {% if costs %}
+  <section class="card">
+    <h2>How the costs are estimated</h2>
+    <ul>
+      {% for n in costs.notes %}<li>{{ n }}</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
   <section class="card">
     <h2>What all three assume</h2>
     <ul>

@@ -236,7 +236,10 @@ def _why(c: Constraints, r: YearResult, b: Block) -> str:
 
 
 def render_options(
-    c: Constraints, results: list[YearResult], template: str = "year_options.html.j2"
+    c: Constraints,
+    results: list[YearResult],
+    template: str = "year_options.html.j2",
+    costs: dict | None = None,
 ) -> str:
     """Several alternative years on one page, compared side by side. With
     template="year_print.html.j2": a black-and-white A4 sheet per option to print."""
@@ -253,8 +256,18 @@ def render_options(
             )
             v["why"] = _why(c, r, b)
             brks.append(v)
+        per_stay = {row["start"]: row for row in (costs or {}).get("options", {}).get(r.label, [])}
+        stay_costs = [per_stay.get(st.start.isoformat()) for st in r.stays]
+        known = [x for x in stay_costs if x]
         views.append(
             {
+                "stay_costs": stay_costs,
+                "cost_total": sum(
+                    x["la_suite"] + x["elsewhere"] + x["car"] + x["flights"] for x in known
+                )
+                if known
+                else None,
+                "cost_missing": sum(1 for x in known if x["missing"]),
                 "r": r,
                 "anchor": f"option-{'abc'[i] if i < 3 else i}",
                 "months": _months(cb, r),
@@ -282,5 +295,6 @@ def render_options(
         year=year,
         peaks=results[0].plan.peaks,
         max_lw=results[0].plan.trip_long_weekends,
+        costs=costs,
         anywhere=results[0].plan.long_weekends_anywhere,
     )

@@ -217,7 +217,7 @@ def _cmd_year(args: argparse.Namespace) -> int:
         if args.out:
             from planner.year_report import render_options
 
-            print(f"Wrote {write(render_options(c, results), args.out)}")
+            print(f"Wrote {write(render_options(c, results, costs=_year_costs()), args.out)}")
         _write_print(c, results, args.print_out)
         return 0
     result = build_year(c, acc)
@@ -234,7 +234,17 @@ def _write_print(c: Constraints, results: list, out: Path | None) -> None:
     if out:
         from planner.year_report import render_options
 
-        print(f"Wrote {write(render_options(c, results, 'year_print.html.j2'), out)}")
+        page = render_options(c, results, "year_print.html.j2", costs=_year_costs())
+        print(f"Wrote {write(page, out)}")
+
+
+def _year_costs(path: Path = Path("data/year_costs.yaml")) -> dict | None:
+    """Estimated costs per stay (La Suite, elsewhere, car, family flights), if recorded."""
+    if not path.exists():
+        return None
+    import yaml
+
+    return yaml.safe_load(path.read_text())
 
 
 def _cmd_routes(args: argparse.Namespace) -> int:

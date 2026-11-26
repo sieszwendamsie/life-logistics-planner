@@ -45,7 +45,9 @@ h2 { font-size: 11pt; margin: 0 0 1.5mm; }
 .holiday i.pl, .holiday i.it { border-color: #fff; }
 .rowgap { grid-column: 1 / -1; height: 0.6mm; }
 
-.cols { display: grid; grid-template-columns: 60mm 1.3fr 1fr; gap: 6mm; align-items: start; flex: 1; min-height: 0; }
+.cols { display: grid; grid-template-columns: 62mm 1fr; gap: 4mm 6mm; align-items: start; flex: 1; min-height: 0; }
+.cols > .wide { grid-column: 1 / -1; }
+td, th { padding: 0.7mm 1.5mm; }
 .kv { display: grid; grid-template-columns: 1fr auto; gap: 1mm 4mm; font-size: 10pt; }
 .kv span:nth-child(even) { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
 .kv .best::after { content: " ★"; }
@@ -100,9 +102,11 @@ ul { margin: 0; padding-left: 4mm; font-size: 8.5pt; }
         <span>Breaks of 3+ days</span><span>{{ o.r.breaks | length }}</span>
         <span>Round trips to Faenza</span><span class="{{ 'best' if o.best_trips }}">{{ o.r.trips }}</span>
         <span>Nights in Faenza</span><span>{{ o.faenza }}</span>
+        {% if o.cost_total is not none %}<span>Estimated cost of Faenza trips</span><span>€{{ '{:,}'.format(o.cost_total) }}{% if o.cost_missing %}*{% endif %}</span>{% endif %}
         <span>Working days in Faenza</span><span>{{ ((1 - o.r.remote_share) * 100) | round | int }}%</span>
       </div>
       {% if options | length > 1 %}<p class="note">★ best of the {{ options | length }} options.</p>{% endif %}
+      {% if costs %}<p class="note">{{ costs.short_note }}</p>{% endif %}
     </div>
     <div>
       <h2>Breaks of 3 days or more</h2>
@@ -113,17 +117,19 @@ ul { margin: 0; padding-left: 4mm; font-size: 8.5pt; }
         </tbody>
       </table>
     </div>
-    <div>
+    <div class="wide">
       <h2>Stays in Faenza</h2>
       <table>
-        <thead><tr><th>Out</th><th>Home</th><th>Nights</th><th>Notes</th></tr></thead>
+        <thead><tr><th>Out</th><th>Home</th><th>Nights</th>{% if costs %}<th>Est. cost</th>{% endif %}<th>Notes</th></tr></thead>
         <tbody>
         {% for st in o.r.stays %}
+          {% set k = o.stay_costs[loop.index0] %}
           <tr>
             <td class="num">{{ st.start.strftime('%a %d %b') }}</td>
             <td class="num">{{ st.end.strftime('%a %d %b') }}</td>
             <td class="num">{{ st.nights }}</td>
-            <td>{% if st.fixed %}{{ st.note }}. {% endif %}{% if st.blocked_nights %}La Suite blocked {{ st.blocked_nights }} night{{ 's' if st.blocked_nights != 1 }}. {% endif %}{% if st.long_weekends %}Long weekend in Faenza: {{ st.long_weekends | join(', ') }}. {% endif %}{% if st.pl_holidays %}Polish holiday: {{ st.pl_holidays | join(', ') }}.{% endif %}</td>
+            {% if costs %}<td class="num">{% if k %}€{{ '{:,}'.format(k.la_suite + k.elsewhere + k.car + k.flights) }}{% if k.missing %}*{% endif %}{% endif %}</td>{% endif %}
+            <td>{% if k %}La Suite €{{ k.la_suite }}{% if k.elsewhere %}, elsewhere €{{ k.elsewhere }}{% endif %}, car €{{ k.car }}, family flights {% if k.missing %}not on sale yet*{% else %}€{{ k.flights }} ({{ k.out.route }} {{ k.out.day[8:10] }}/{{ k.out.day[5:7] }} {{ k.out.dep }}, {{ k.back.route }} {{ k.back.day[8:10] }}/{{ k.back.day[5:7] }} {{ k.back.dep }}){% endif %}. {% endif %}{% if st.fixed %}{{ st.note }}. {% endif %}{% if st.blocked_nights %}La Suite blocked {{ st.blocked_nights }} night{{ 's' if st.blocked_nights != 1 }}. {% endif %}{% if st.long_weekends %}Long weekend in Faenza: {{ st.long_weekends | join(', ') }}. {% endif %}{% if st.pl_holidays %}Polish holiday: {{ st.pl_holidays | join(', ') }}.{% endif %}</td>
           </tr>
         {% endfor %}
         </tbody>

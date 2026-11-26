@@ -332,3 +332,33 @@ def test_long_weekends_anywhere_allows_a_bridge_inside_a_stay() -> None:
     for st in strict.stays:
         assert _edge_only(cb, st.start, st.end, frozenset(may))
     assert loose.plan.long_weekends_anywhere and not strict.plan.long_weekends_anywhere
+
+
+def test_options_page_shows_estimated_costs_when_given() -> None:
+    from planner.models import YearOption
+    from planner.year import build_options
+    from planner.year_report import render_options
+
+    c = _c(options=[YearOption(label="A")])
+    (r,) = build_options(c, ACC)
+    st = r.stays[0]
+    row = {
+        "start": st.start.isoformat(),
+        "la_suite": 100,
+        "elsewhere": 0,
+        "car": 400,
+        "flights": 0,
+        "missing": ["out", "back"],
+        "out": None,
+        "back": None,
+    }
+    costs = {
+        "checked": "today",
+        "la_suite_eur_per_night": 50,
+        "notes": ["note one"],
+        "short_note": "short",
+        "options": {"A": [row]},
+    }
+    html = render_options(c, [r], costs=costs)
+    assert "Estimated cost of Faenza trips" in html and "€500*" in html and "note one" in html
+    assert "Estimated cost" not in render_options(c, [r])
