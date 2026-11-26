@@ -7,7 +7,7 @@
           <span>Breaks of 3+ days</span><span>{{ o.r.breaks | length }}</span>
           <span>Round trips to Faenza</span><span class="{{ 'best' if o.best_trips }}">{{ o.r.trips }}</span>
           <span>Nights in Faenza</span><span>{{ o.faenza }}</span>
-          <span>Remote work</span><span>{{ (o.r.remote_share * 100) | round | int }}%</span>
+          <span>Working days in Faenza</span><span>{{ ((1 - o.r.remote_share) * 100) | round | int }}%</span>
         </div>
 {% endmacro %}
 <title>{{ year }} Year Options</title>
@@ -28,8 +28,8 @@ nav.jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 </style>
 <main>
   <header style="display:grid; gap:8px">
-    <h1>{{ year }}: three ways to plan the year</h1>
-    <p class="sub">Each option keeps your rules: about 4 weeks around the summer shutdown, two weeks in March or April, at most 2 extra days at Christmas, 55–65% remote work and the fewest trips. They differ in which holidays and bridge days you take. Nothing is booked or priced; flights are checked live per stay later.</p>
+    <h1>{{ year }}: {{ options | length }} ways to plan the year</h1>
+    {% set rs = options[0].r.plan.remote_share %}<p class="sub">Each option keeps your rules: about 4 weeks around the summer shutdown, at least a week off around Basia's birthday, at most 2 extra days at Christmas, {{ ((1 - rs[1]) * 100) | round | int }}–{{ ((1 - rs[0]) * 100) | round | int }}% of working days in Faenza and the fewest trips that allows. They differ in which holidays and bridge days you take. Nothing is booked or priced; flights are checked live per stay later.</p>
   </header>
 
   <section>

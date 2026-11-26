@@ -60,7 +60,7 @@ ul { margin: 0; padding-left: 4mm; font-size: 8.5pt; }
 <section class="sheet">
   <div class="top">
     <h1>{{ year }} · {{ o.r.label }}</h1>
-    <span class="note">{{ o.r.trips }} trips · {{ o.faenza }} nights in Faenza · {{ o.r.days_off_in_breaks }} days off for {{ o.r.paid_days_off }} paid · {{ (o.r.remote_share * 100) | round | int }}% remote</span>
+    <span class="note">{{ o.r.trips }} trips · {{ o.faenza }} nights in Faenza · {{ o.r.days_off_in_breaks }} days off for {{ o.r.paid_days_off }} paid · {{ ((1 - o.r.remote_share) * 100) | round | int }}% of working days in Faenza</span>
   </div>
   <div class="legend">
     <span><i class="sw home"></i>Poznań</span>
@@ -100,7 +100,7 @@ ul { margin: 0; padding-left: 4mm; font-size: 8.5pt; }
         <span>Breaks of 3+ days</span><span>{{ o.r.breaks | length }}</span>
         <span>Round trips to Faenza</span><span class="{{ 'best' if o.best_trips }}">{{ o.r.trips }}</span>
         <span>Nights in Faenza</span><span>{{ o.faenza }}</span>
-        <span>Remote work</span><span>{{ (o.r.remote_share * 100) | round | int }}%</span>
+        <span>Working days in Faenza</span><span>{{ ((1 - o.r.remote_share) * 100) | round | int }}%</span>
       </div>
       {% if options | length > 1 %}<p class="note">★ best of the {{ options | length }} options.</p>{% endif %}
     </div>

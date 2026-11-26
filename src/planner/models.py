@@ -261,6 +261,9 @@ class YearOption(BaseModel):
     note: str = ""
     long_holiday_start: date | None = None
     second_holiday_start: date | None = None
+    # Length of the second holiday in days (min, max), if not the plan's 14-17,
+    # e.g. (7, 10) for one week around a family event.
+    second_holiday_days: tuple[int, int] | None = None
     # Paid working days taken off to turn a public holiday into a long weekend.
     bridge_days: list[date] = Field(default_factory=list)
 

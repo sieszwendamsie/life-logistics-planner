@@ -401,35 +401,47 @@ def plan_stays(
         lo = 0 if relaxed else plan.min_home_nights
         return lo <= n <= plan.max_home_nights and between_ok(a, b)
 
-    best: list[tuple[float, int]] = []  # (cost, previous index or -1)
-    for i, st in enumerate(nodes):
-        options: list[tuple[float, int]] = []
+    # best[i][k]: cheapest chain ending with stay i that joins k long weekends to
+    # stays (at most plan.trip_long_weekends), as (cost, previous i, previous k).
+    cap = plan.trip_long_weekends
+    inf = float("inf")
+    target = (plan.min_home_nights + plan.max_home_nights) / 2
+    best: list[dict[int, tuple[float, int, int]]] = []
+    for st in nodes:
+        here: dict[int, tuple[float, int, int]] = {}
+        own = len(st.long_weekends)
+
+        def offer(
+            k: int, cost: float, j: int, pk: int, here: dict[int, tuple[float, int, int]] = here
+        ) -> None:
+            if k <= cap and cost < here.get(k, (inf, -1, -1))[0]:
+                here[k] = (cost, j, pk)
+
         if gap_ok(plan.start, st.start, relaxed=st.fixed):
-            options.append((st.cost, -1))
-        for j in range(i):
-            prev = nodes[j]
-            if prev.end > st.start or best[j][0] == float("inf"):
+            offer(own, st.cost, -1, -1)
+        for j, prev in enumerate(nodes[: len(best)]):
+            if prev.end > st.start or not best[j]:
                 continue
             if gap_ok(prev.end, st.start, relaxed=st.fixed or prev.fixed):
                 gap = _home_nights(prev.end, st.start, holidays)
-                target = (plan.min_home_nights + plan.max_home_nights) / 2
-                options.append((best[j][0] + st.cost + abs(gap - target) / 7, j))
-        best.append(min(options) if options else (float("inf"), -1))
+                step = st.cost + abs(gap - target) / 7
+                for k, (cost, _, _) in best[j].items():
+                    offer(k + own, cost + step, j, k)
+        best.append(here)
 
     ends = [
-        (best[i][0], i)
+        (cost, i, k)
         for i, st in enumerate(nodes)
-        if best[i][0] < float("inf")
-        and _home_nights(st.end, xmas, holidays) <= plan.max_home_nights
-        and between_ok(st.end, xmas)
+        if _home_nights(st.end, xmas, holidays) <= plan.max_home_nights and between_ok(st.end, xmas)
+        for k, (cost, _, _) in best[i].items()
     ]
     if not ends:
         return []
-    _, i = min(ends)
+    _, i, k = min(ends)
     chain = []
     while i != -1:
         chain.append(nodes[i])
-        i = best[i][1]
+        _, i, k = best[i][k]
     return chain[::-1]
 
 
@@ -504,6 +516,10 @@ def work_split(
 # Stay and gap lengths (nights) to try when the configured rhythm misses the
 # remote-work share. The configured one is always tried first.
 RHYTHMS = [
+    (28, 42, 21, 35),
+    (21, 35, 21, 35),
+    (21, 35, 14, 28),
+    (28, 35, 14, 28),
     (21, 28, 28, 42),
     (21, 28, 35, 49),
     (21, 35, 35, 56),
@@ -600,6 +616,7 @@ def build_options(c: Constraints, acc: AccommodationFile) -> list[YearResult]:
             update={
                 "long_holiday_start": opt.long_holiday_start or plan.long_holiday_start,
                 "second_holiday_start": opt.second_holiday_start or plan.second_holiday_start,
+                "second_holiday_days": opt.second_holiday_days or plan.second_holiday_days,
                 "options": [],
             }
         )
@@ -683,7 +700,7 @@ def check_year(c: Constraints, r: YearResult) -> list[str]:
                 f"{plan.winter_extra_days}."
             )
     lo, hi = plan.remote_share
-    if r.stays and not lo <= r.remote_share <= hi:
+    if r.stays and not lo <= round(r.remote_share, 2) <= hi:
         out.append(f"Remote share is {r.remote_share:.0%}, target {lo:.0%}-{hi:.0%}.")
     for b in r.holidays:
         for q in plan.no_holiday:

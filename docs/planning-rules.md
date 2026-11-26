@@ -38,6 +38,12 @@ Real values (home address, prices) live in the gitignored `data/` files.
   - The winter shutdown is usually busy: add at most 1 to 2 extra days to it.
 - **Avoid peak prices** where possible: school-holiday peaks and long weekends.
 - **Where**: not part of the plan yet.
+- **At least one week off around Basia's birthday** (5 to 13 March) in every plan
+  (Martin, 26 Nov 2026). An option may take it as one week
+  (`options[].second_holiday_days`) and spend other days elsewhere, such as the
+  week after Easter.
+- **Easter**: at least one option takes the extra days off in the week after
+  Easter Monday (30 to 31 March), not before.
 - **No longer holidays from about 20 September to the end of the year, or in January
   and February** (busy at work; Martin, 26 Nov 2026). Only long weekends there
   (`year_plan.no_holiday`). The Christmas shutdown plus its 1 to 2 extra days
@@ -58,8 +64,8 @@ Real values (home address, prices) live in the gitignored `data/` files.
   - Christmas: the shutdown plus at most 2 paid days.
 
 ### Year plan (draft rhythm)
-- **Remote work 55 to 65% of working days** (Martin, 25 Nov 2026): the rest is
-  office time in Faenza. Working days leave out weekends, Italian holidays,
+- **50 to 60% of working days in Faenza** (Martin, 26 Nov 2026; was 35 to 45%),
+  so remote work from Poznań is 40 to 50% (`year_plan.remote_share: [0.40, 0.50]`). Working days leave out weekends, Italian holidays,
   shutdowns and his holidays (`year_plan.remote_share`).
 - Stays in Faenza of 14 to 21 nights, with 28 to 42 nights in Poznań between
   them by default. The planner also tries other stay and gap lengths and keeps
