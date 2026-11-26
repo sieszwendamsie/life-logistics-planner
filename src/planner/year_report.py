@@ -86,7 +86,9 @@ def _blocked(st: Stay, d: date) -> bool:
     return d in st.blocked
 
 
-def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell]]]:
+def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell], int]]:
+    """Per month: its name, its days, and the weekday of the 1st (Mon 0), so the
+    weekday view can shift each row and stack weekends in the same columns."""
     it = {h.day: h.name for h in c.holidays if h.country == "IT"}
     pl = {h.day: h.name for h in c.holidays if h.country == "PL"}
     free = free_days_off(c, r.plan.year)
@@ -112,7 +114,7 @@ def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell]]]:
                 )
             )
             d += timedelta(days=1)
-        rows.append((first.strftime("%b"), cells))
+        rows.append((first.strftime("%b"), cells, first.weekday()))
     return rows
 
 
@@ -273,5 +275,8 @@ def render_options(c: Constraints, results: list[YearResult]) -> str:
     )
     year = results[0].plan.year
     return env.get_template("year_options.html.j2").render(
-        options=views, year=year, peaks=results[0].plan.peaks
+        options=views,
+        year=year,
+        peaks=results[0].plan.peaks,
+        max_lw=results[0].plan.trip_long_weekends,
     )

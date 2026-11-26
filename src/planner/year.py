@@ -224,6 +224,8 @@ class Stay:
     peak_travel: list[str] = field(default_factory=list)
     school_peak_travel: list[str] = field(default_factory=list)
     office: list[DateRange] = field(default_factory=list)
+    # Bridge-day long weekends spent in Faenza at the start or end of the stay.
+    long_weekends: list[str] = field(default_factory=list)
     cost: float = 0.0
 
     @property
@@ -286,8 +288,40 @@ def _evaluate(
     return stay
 
 
+def _edge_only(c: Constraints, s: date, e: date, bridges: frozenset[date]) -> bool:
+    """True if every bridge day inside s..e belongs to the run of days off that the
+    stay starts or ends in: the long weekend is spent in Faenza next to travel."""
+    for d in _days(s, e):
+        if d not in bridges:
+            continue
+        if not (all(c.day_off(x) for x in _days(s, d)) or all(c.day_off(x) for x in _days(d, e))):
+            return False
+    return True
+
+
+def _trip_long_weekends(c: Constraints, s: date, e: date, bridges: frozenset[date]) -> list[str]:
+    inside = [d for d in _days(s, e) if d in bridges]
+    out = []
+    for d in inside:
+        run_start = d
+        while c.day_off(run_start - DAY):
+            run_start -= DAY
+        run_end = d
+        while c.day_off(run_end + DAY):
+            run_end += DAY
+        label = f"{run_start:%d %b}-{run_end:%d %b}"
+        if label not in out:
+            out.append(label)
+    return out
+
+
 def _candidates(
-    c: Constraints, acc: AccommodationFile, plan: YearPlan, no_go: list[DateRange], last: date
+    c: Constraints,
+    acc: AccommodationFile,
+    plan: YearPlan,
+    no_go: list[DateRange],
+    last: date,
+    bridges: frozenset[date] = frozenset(),
 ) -> list[Stay]:
     found = []
     for s in _days(plan.start + DAY, last):
@@ -299,12 +333,17 @@ def _candidates(
                 continue
             if any(_overlaps(s, e, r) for r in no_go):
                 continue
+            if bridges and not _edge_only(c, s, e, bridges):
+                continue
             office = [o for o in c.martin_italy() if _overlaps(s, e, o)]
             # Office periods must lie fully inside, without travelling on them.
             if any(not (s < o.start and o.end < e) for o in office):
                 continue
             stay = _evaluate(c, acc, plan, s, e, fixed=False)
             if stay:
+                stay.long_weekends = _trip_long_weekends(c, s, e, bridges)
+                # A long weekend in Faenza next to travel is a small plus.
+                stay.cost -= 2 * len(stay.long_weekends)
                 found.append(stay)
     return found
 
@@ -316,14 +355,19 @@ def _home_nights(a: date, b: date, holidays: list[Block]) -> int:
 
 
 def plan_stays(
-    c: Constraints, acc: AccommodationFile, plan: YearPlan, holidays: list[Block]
+    c: Constraints,
+    acc: AccommodationFile,
+    plan: YearPlan,
+    holidays: list[Block],
+    bridges: frozenset[date] = frozenset(),
 ) -> list[Stay]:
     """The cheapest chain of stays through the year (fewest compromises).
 
     A chain starts after `plan.start`, keeps every Poznań gap within
     `min_home_nights`..`max_home_nights` (holidays don't count as Poznań), includes
     every fixed stay and required office period, and ends with at most
-    `max_home_nights` before the Christmas shutdown.
+    `max_home_nights` before the Christmas shutdown. Bridge days may fall inside
+    a stay only next to its travel days (a long weekend spent in Faenza).
     """
     xmas = next(
         (r.start for r in c.shutdown if r.start.year == plan.year and r.start.month == 12),
@@ -336,13 +380,16 @@ def plan_stays(
         *c.other_travel,
         *(DateRange(start=h.start, end=h.end) for h in holidays),
     ]
+    no_go = [r for r in no_go if not (r.start == r.end and r.start in bridges)]
     fixed = [
         st for f in plan.fixed_stays if (st := _evaluate(c, acc, plan, f.start, f.end, fixed=True))
     ]
     for st, f in zip(fixed, plan.fixed_stays, strict=True):
         st.note = f.note
     no_go_free = [*no_go, *plan.fixed_stays]
-    nodes = sorted([*fixed, *_candidates(c, acc, plan, no_go_free, xmas)], key=lambda s: s.start)
+    nodes = sorted(
+        [*fixed, *_candidates(c, acc, plan, no_go_free, xmas, bridges)], key=lambda s: s.start
+    )
     must = [*plan.fixed_stays, *c.martin_italy()]
 
     def between_ok(a: date, b: date) -> bool:
@@ -469,7 +516,11 @@ RHYTHMS = [
 
 
 def _plan_with_share(
-    c: Constraints, acc: AccommodationFile, plan: YearPlan, taken: list[Block]
+    c: Constraints,
+    acc: AccommodationFile,
+    plan: YearPlan,
+    taken: list[Block],
+    bridges: frozenset[date] = frozenset(),
 ) -> tuple[YearPlan, list[Stay], int, int]:
     """The rhythm (configured or tried) with the remote share in range and the
     fewest trips; if none is in range, the one closest to it."""
@@ -488,7 +539,7 @@ def _plan_with_share(
     ]
     best: tuple[tuple, YearPlan, list[Stay], int, int] | None = None
     for i, p in enumerate(tries):
-        stays = plan_stays(c, acc, p, taken)
+        stays = plan_stays(c, acc, p, taken, bridges)
         if not stays:
             continue
         work, office = work_split(c, plan.year, stays, taken)
@@ -577,14 +628,15 @@ def build_year(
         second_options = [*second_holidays(c, plan, long_pick, pinned=start), *second_options]
     second_pick = _pick(second_options, start)
     taken = [b for b in (long_pick, second_pick) if b]
-    # Bridge days are leave: no stay is planned over them and they are not worked.
+    # Bridge days are leave (not worked). A stay may hold them only next to its
+    # travel days, so the long weekend is spent in Faenza.
     bridges = sorted(
         d
         for d in (bridge_days or [])
         if not c.day_off(d) and not any(b.start <= d <= b.end for b in taken)
     )
     cb = with_bridges(c, bridges)
-    rhythm, stays, work, office = _plan_with_share(cb, acc, plan, taken)
+    rhythm, stays, work, office = _plan_with_share(cb, acc, plan, taken, frozenset(bridges))
     return YearResult(
         plan=rhythm,
         long_options=long_options,
@@ -644,6 +696,11 @@ def check_year(c: Constraints, r: YearResult) -> list[str]:
         for b in r.holidays:
             if st.start <= b.end and b.start <= st.end:
                 out.append(f"Stay {st.start:%d %b}-{st.end:%d %b} overlaps a holiday.")
+    joined = sum(len(st.long_weekends) for st in r.stays)
+    if joined > plan.trip_long_weekends:
+        out.append(
+            f"{joined} long weekends are joined to Faenza stays, max is {plan.trip_long_weekends}."
+        )
     return out
 
 
@@ -683,6 +740,8 @@ def text(c: Constraints, r: YearResult) -> str:
             flags.append(f"La Suite blocked {st.blocked_nights} nights")
         if st.office:
             flags.append("office period inside")
+        if st.long_weekends:
+            flags.append("long weekend in Faenza: " + ", ".join(st.long_weekends))
         if st.pl_holidays:
             flags.append("Polish holiday: " + ", ".join(st.pl_holidays))
         if st.pl_wishes:

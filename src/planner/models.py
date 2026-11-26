@@ -293,6 +293,9 @@ class YearPlan(BaseModel):
     remote_share: tuple[float, float] = (0.55, 0.65)
     # No long or two-week holiday may touch these (busy at work); long weekends only.
     no_holiday: list[DateRange] = Field(default_factory=list)
+    # At most this many bridge-day long weekends may be spent in Faenza, joined to
+    # the start or end of a stay (travel on the free days around them).
+    trip_long_weekends: int = Field(default=3, ge=0)
     # Months the two-week holiday should fall in (empty: any month), e.g. [3, 4].
     second_holiday_months: list[int] = Field(default_factory=list)
     # Pick these holidays (by start date) instead of the best-ranked ones.

@@ -2,7 +2,7 @@
 /* Layout: one column; a wall-planner strip of 12 months up top, then the decisions as tables. */
 :root {
   --bg: #f6f7f4; --surface: #ffffff; --ink: #1d2320; --muted: #5b645f; --line: #dde1dc;
-  --home: #dfe5ea; --home-we: #b9c3cc; --we-ring: #d23b3b; --stay: #3f8f6b; --solo: #e0a23a; --holiday: #7a6fc4; --shut: #9aa19c;
+  --home: #dfe5ea; --home-we: #b9c3cc; --we-ring: #d23b3b; --stay: #3f8f6b; --solo: #a9d6bf; --solo-stripe: #8cc4a8; --band: #f1f3ef; --holiday: #7a6fc4; --shut: #9aa19c;
   --it: #c0392b; --pl: #2f5fa7; --on-solo: #1d2320; --accent: #2d6a4f; --pick: rgba(63, 143, 107, 0.12);
   --font-head: "Space Grotesk", system-ui, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -10,15 +10,17 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #141816; --surface: #1c211f; --ink: #e6e9e6; --muted: #a0a9a4; --line: #313834;
-    --home: #2c3540; --home-we: #46525f; --we-ring: #f06a6a; --stay: #4fa881; --solo: #e6b04f; --holiday: #988de0; --shut: #5f6762;
+    --home: #2c3540; --home-we: #46525f; --we-ring: #f06a6a; --stay: #4fa881; --solo: #2f5f4a; --solo-stripe: #3a6f57; --band: #232926; --holiday: #988de0; --shut: #5f6762;
     --it: #ec7a6c; --pl: #7ea6e6; --accent: #7cc5a1; --pick: rgba(79, 168, 129, 0.16);
+    --on-solo: #e6e9e6;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #141816; --surface: #1c211f; --ink: #e6e9e6; --muted: #a0a9a4; --line: #313834;
-  --home: #2c3540; --home-we: #46525f; --we-ring: #f06a6a; --stay: #4fa881; --solo: #e6b04f; --holiday: #988de0; --shut: #5f6762;
+  --home: #2c3540; --home-we: #46525f; --we-ring: #f06a6a; --stay: #4fa881; --solo: #2f5f4a; --solo-stripe: #3a6f57; --band: #232926; --holiday: #988de0; --shut: #5f6762;
   --it: #ec7a6c; --pl: #7ea6e6; --accent: #7cc5a1; --pick: rgba(79, 168, 129, 0.16);
+  --on-solo: #e6e9e6;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -46,15 +48,32 @@ section { display: grid; gap: 12px; min-width: 0; }
 }
 .legend .ring::before { background: transparent; box-shadow: inset 0 0 0 2px var(--c); }
 .legend .dot::before { width: 6px; height: 6px; border-radius: 50%; vertical-align: 1px; }
-.wall { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
-.month { display: grid; grid-template-columns: 40px repeat(31, 24px); gap: 2px; align-items: center; }
-.month + .month { margin-top: 2px; }
+.cal { display: grid; gap: 10px; min-width: 0; }
+.view { display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.85rem; }
+.view label { border: 1px solid var(--line); border-radius: 999px; padding: 2px 12px; background: var(--surface); cursor: pointer; }
+.view label:has(input:checked) { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 600; }
+.view label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.view input { position: absolute; opacity: 0; pointer-events: none; }
+.wall { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
+.wall.week { display: none; }
+.cal:has(input[value="week"]:checked) .wall.date { display: none; }
+.cal:has(input[value="week"]:checked) .wall.week { display: block; }
+/* Each month is its own band, with space between, so rows don't run together. */
+.month { display: grid; grid-template-columns: 40px repeat(31, 24px); gap: 2px; align-items: center; width: max-content; padding: 4px 6px; border-radius: 6px; }
+.wall.week .month { grid-template-columns: 40px repeat(37, 22px); }
+.month:nth-child(odd) { background: var(--band); }
+.month + .month { margin-top: 4px; }
+.month.head { background: none; padding-block: 0; }
+.wd { font-size: 0.66rem; font-weight: 600; color: var(--muted); text-align: center; }
+.wd.we { color: var(--we-ring); }
 .month .m { font-size: 0.8rem; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
 .d {
   position: relative; height: 24px; border-radius: 3px; font-size: 0.66rem; line-height: 24px;
   text-align: center; font-variant-numeric: tabular-nums; color: var(--ink);
 }
 .d.we { font-weight: 700; }
+/* Weekends: red ring everywhere, and a darker shade of whatever colour the day has. */
+.d.we:not(.home) { filter: brightness(0.84) saturate(1.15); }
 .home.we { background: var(--home-we); }
 .d.we::after {
   content: ""; position: absolute; left: 3px; right: 3px; bottom: 2px; height: 2px;
@@ -65,7 +84,8 @@ section { display: grid; gap: 12px; min-width: 0; }
 .d.we.off { box-shadow: inset 0 0 0 2px var(--we-ring), inset 0 0 0 4px var(--holiday); }
 .home { background: var(--home); }
 .stay { background: var(--stay); color: var(--surface); }
-.solo { background: var(--solo); color: var(--on-solo); }
+.solo { background: repeating-linear-gradient(135deg, var(--solo) 0 4px, var(--solo-stripe) 4px 8px); color: var(--on-solo); }
+.legend .solo-key::before { background: repeating-linear-gradient(135deg, var(--solo) 0 3px, var(--solo-stripe) 3px 6px); }
 .holiday { background: var(--holiday); color: var(--surface); }
 .d i { position: absolute; top: 2px; width: 5px; height: 5px; border-radius: 50%; }
 .d i.it { right: 2px; background: var(--it); }

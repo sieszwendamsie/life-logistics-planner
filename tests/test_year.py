@@ -13,7 +13,15 @@ from planner.models import (
     StayRules,
     YearPlan,
 )
-from planner.year import build_year, holiday_blocks, long_weekends, winter_extras
+from planner.year import (
+    _edge_only,
+    build_year,
+    check_year,
+    holiday_blocks,
+    long_weekends,
+    winter_extras,
+    with_bridges,
+)
 from planner.year_report import questions, render_year
 
 RULES = StayRules(min_stay_days=14, max_stay_days=28, min_gap_days=14, max_gap_days=42)
@@ -250,8 +258,9 @@ def test_options_compare_bridges_and_holidays() -> None:
     dec = [x for x in b.breaks if x.start <= date(2027, 12, 8) <= x.end]
     assert dec and (dec[0].start, dec[0].end) == (date(2027, 12, 8), date(2027, 12, 12))
     assert b.days_off_in_breaks == a.days_off_in_breaks + 5
-    for st in b.stays:  # no stay over a bridge day
-        assert not any(st.start <= d <= st.end for d in b.bridges)
+    cb = with_bridges(c, b.bridges)
+    for st in b.stays:  # a bridge day only in the long weekend next to travel
+        assert _edge_only(cb, st.start, st.end, frozenset(b.bridges))
     html = render_options(c, [a, b])
     assert "Bridge day, paid" in html and "Side by side" in html
 
@@ -269,3 +278,21 @@ def test_no_holiday_periods_are_respected() -> None:
 
     c = _c(no_holiday=quiet, second_holiday_start=date(2027, 10, 23))
     assert not any("no-holiday" in p for p in check_year(c, build_year(c, ACC)))
+
+
+def test_long_weekend_joins_a_stay_only_next_to_travel() -> None:
+    c = with_bridges(_c(), [date(2027, 12, 9), date(2027, 12, 10)])  # Wed 8 Dec to Sun 12
+    br = frozenset([date(2027, 12, 9), date(2027, 12, 10)])
+    # Ends on Sun 12 Dec after the long weekend in Faenza: fine.
+    assert _edge_only(c, date(2027, 11, 21), date(2027, 12, 12), br)
+    # Starts on Wed 8 Dec, spending the long weekend in Faenza first: fine.
+    assert _edge_only(c, date(2027, 12, 8), date(2027, 12, 23), br)
+    # Long weekend in the middle, with working days on both sides: not allowed.
+    assert not _edge_only(c, date(2027, 12, 4), date(2027, 12, 19), br)
+
+
+def test_check_year_caps_long_weekends_in_faenza() -> None:
+    r = build_year(_c(trip_long_weekends=0), ACC)
+    assert r.stays
+    r.stays[0].long_weekends = ["08 Dec-12 Dec"]
+    assert any("long weekends are joined" in p for p in check_year(_c(trip_long_weekends=0), r))
