@@ -42,6 +42,9 @@ def free_days_off(c: Constraints, year: int) -> dict[date, str]:
         if h.country == "IT" and h.day.weekday() < 5:
             seeds.setdefault(h.day, f"Italian holiday: {h.name}" if h.name else "Italian holiday")
     leave = {d for r in c.leave for d in _span(r.start, r.end)}
+    # A day off taken on its own (a bridge day) also makes a long weekend.
+    for d in sorted(leave):
+        seeds.setdefault(d, "paid day off")
     # Mark every run of days off (weekends included) that holds such a day.
     days: dict[date, str] = {}
     d = date(year, 1, 1) - timedelta(days=14)
