@@ -69,6 +69,17 @@ def free_days_off(c: Constraints, year: int) -> dict[date, str]:
     return days
 
 
+def celebrations(c: Constraints) -> dict[date, str]:
+    """Days the family must be somewhere for an occasion (a #must presence event,
+    such as a communion or a birthday party). The calendar marks them like a holiday."""
+    return {
+        d: p.title or "Celebration"
+        for p in c.presence
+        if p.strength == "must"
+        for d in _span(p.start, p.end)
+    }
+
+
 def _kind(c: Constraints, r: YearResult, d: date, free: dict[date, str]) -> tuple[str, str]:
     for st in r.stays:
         if st.start <= d <= st.end:
@@ -98,6 +109,8 @@ def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell], int]]:
     it = {h.day: h.name for h in c.holidays if h.country == "IT"}
     pl = {h.day: h.name for h in c.holidays if h.country == "PL"}
     free = free_days_off(c, r.plan.year)
+    for d, name in celebrations(c).items():
+        free[d] = f"{name} · {free[d]}" if d in free else name
     blocked = set(r.suite_blocked)
     rows = []
     for m in range(1, 13):

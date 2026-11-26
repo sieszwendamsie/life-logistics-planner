@@ -362,3 +362,34 @@ def test_options_page_shows_estimated_costs_when_given() -> None:
     html = render_options(c, [r], costs=costs)
     assert "Estimated cost of Faenza trips" in html and "€500*" in html and "note one" in html
     assert "Estimated cost" not in render_options(c, [r])
+
+
+def test_celebration_days_are_marked_like_a_holiday() -> None:
+    from planner.models import Presence
+    from planner.year_report import _months
+
+    c = _c()
+    c.presence = [
+        Presence(
+            title="Communion",
+            start=date(2027, 5, 15),
+            end=date(2027, 5, 15),
+            where="PL",
+            who=["Martin"],
+            strength="must",
+        ),
+        Presence(
+            title="Maybe",
+            start=date(2027, 5, 22),
+            end=date(2027, 5, 22),
+            where="PL",
+            who=["Martin"],
+            strength="pref",
+        ),
+    ]
+    r = build_year(c, ACC)
+    may = next(cells for name, cells, _ in _months(c, r) if name == "May")
+    day15, day22 = may[14], may[21]
+    assert "Communion" in day15.title
+    assert day15.kind == "holiday" or day15.off
+    assert "Maybe" not in day22.title
