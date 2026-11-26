@@ -111,9 +111,9 @@ def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell], int]]:
     pl = {h.day: h.name for h in c.holidays if h.country == "PL"}
     free = free_days_off(c, r.plan.year)
     marks = {
-        d: "M" if p.tag == "moto" else "E"
+        d: ("M" if p.tag == "moto" else "E") + ("" if p.strength == "must" else "?")
         for p in c.presence
-        if p.strength == "must"
+        if p.strength == "must" or p.tag
         for d in _span(p.start, p.end)
     }
     for d, name in celebrations(c).items():
@@ -317,11 +317,14 @@ def render_options(
                             else f"{p.start:%d %b}–{p.end:%d %b}"
                         ),
                         "short": p.title.split(" (")[0],
-                        "provisional": "provisional" in p.title or "proposed" in p.title,
-                        "mark": "M" if p.tag == "moto" else "E",
+                        "provisional": p.strength != "must"
+                        or "provisional" in p.title
+                        or "proposed" in p.title,
+                        "mark": ("M" if p.tag == "moto" else "E")
+                        + ("" if p.strength == "must" else "?"),
                     }
                     for p in sorted(c.presence, key=lambda p: p.start)
-                    if p.strength == "must" and p.start.year == r.plan.year
+                    if (p.strength == "must" or p.tag) and p.start.year == r.plan.year
                 ],
             }
         )

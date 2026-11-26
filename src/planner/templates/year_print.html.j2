@@ -31,7 +31,7 @@ h2 { font-size: 11pt; margin: 0 0 1.5mm; }
 .holiday { background: #000; color: #fff; }
 .off { box-shadow: inset 0 0 0 0.8mm #000; }
 /* La Suite blocked while you're not in Faenza: a striped corner. */
-.sb { background-image: linear-gradient(135deg, transparent 60%, #8a8a8a 60%); }
+.sb { background-image: linear-gradient(135deg, transparent 60%, #d0d0d0 60%); }
 
 .grid { display: grid; grid-template-columns: 13mm repeat(37, 1fr); gap: 0.5mm; }
 .grid .m { font-weight: 700; font-size: 9pt; align-self: center; }
@@ -84,7 +84,7 @@ ul { margin: 0; padding-left: 4mm; font-size: 8.5pt; }
     <span><b>12</b>&nbsp;bold, thick frame = weekend</span>
     <span>● Italian holiday</span>
     <span>○ Polish holiday</span>
-    <span><b class="evk">M</b> motorcycle event · <b class="evk">E</b> family or work event</span>
+    <span><b class="evk">M</b> motorcycle event · <b class="evk">E</b> family or work event · <b class="evk">M?</b> idea, not planned yet</span>
   </div>
   <div class="grid">
     <div></div>
@@ -124,7 +124,7 @@ ul { margin: 0; padding-left: 4mm; font-size: 8.5pt; }
       <div class="ev-list">
         {% for e in o.events %}<div><span class="num">{{ e.short_dates }}</span> <b class="evk">{{ e.mark }}</b> {{ e.short }}{% if e.provisional %}*{% endif %}</div>{% endfor %}
       </div>
-      {% if o.events | selectattr('provisional') | list %}<p class="note" style="margin:0">* provisional: 2027 date not out yet, same weekend as 2026 (or proposed).</p>{% endif %}
+      {% if o.events | selectattr('provisional') | list %}<p class="note" style="margin:0">* not planned around yet: 2027 date not out (same weekend as 2026) or still an idea.</p>{% endif %}
       {% endif %}
     </div>
     <div>
