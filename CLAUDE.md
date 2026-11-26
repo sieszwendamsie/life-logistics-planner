@@ -23,6 +23,7 @@ No web app in the MVP.
 - `uv run planner routes --month YYYY-MM`: flight times that can work per route, with Ryanair month links
 - `uv run planner fares --month YYYY-MM [--route POZ-BGY] [--who martin] [--refresh]`: live Ryanair fares per route inside those windows (cached 12 h; says so if it cannot reach Ryanair)
 - `uv run planner year --out out/year.html`: draft plan of a whole year (holidays, then stays)
+- Skills (run in Claude Code): `/import-calendar`, `/plan-next-stay`, `/plan-year`, `/find-flights`
 
 ## Owner
 Martin is learning Claude Code from beginner to pro. When you add a new kind of file
@@ -41,9 +42,10 @@ and say so when a better existing tool already does the job.
 
 ## Layout
 - docs/ : specs and notes (mvp.md is the source of truth for scope, spec.md for how,
-  planning-rules.md for every travel rule and the fastest planning steps)
+  planning-rules.md for every travel rule and the fastest planning steps,
+  rules-audit.md for which rules the code enforces)
 - src/planner/ : Python package (CLI skeleton in place)
-- examples/ : fake data, safe to commit (planned)
+- examples/ : fake data, safe to commit; tests use it
 - data/, out/ : real personal data and reports, gitignored, never commit
 - plugin/life-logistics/ : the `life-logistics` plugin, the single copy of the skills
   (import-calendar, plan-next-stay, plan-year, find-flights) and the pre-commit hook;
