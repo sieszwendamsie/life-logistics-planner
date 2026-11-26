@@ -553,6 +553,8 @@ def _plan_with_share(
             }
         )
         for a, b, g, h in RHYTHMS
+        # Stays never longer than the general stay rule (Martin: keep stay lengths).
+        if c.stay_rules is None or b <= c.stay_rules.max_stay_days
     ]
     best: tuple[tuple, YearPlan, list[Stay], int, int] | None = None
     for i, p in enumerate(tries):

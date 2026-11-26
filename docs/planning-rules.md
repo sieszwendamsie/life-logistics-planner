@@ -66,8 +66,10 @@ Real values (home address, prices) live in the gitignored `data/` files.
   - Christmas: the shutdown plus at most 2 paid days.
 
 ### Year plan (draft rhythm)
-- **50 to 60% of working days in Faenza** (Martin, 26 Nov 2026; was 35 to 45%),
-  so remote work from Poznań is 40 to 50% (`year_plan.remote_share: [0.40, 0.50]`). Working days leave out weekends, Italian holidays,
+- **Remote work 50 to 60% of working days** (Martin, 26 Nov 2026; was 55 to 65%),
+  so 40 to 50% in Faenza (`year_plan.remote_share: [0.50, 0.60]`). Stays are
+  never longer than `stay_rules.max_stay_days` (28): the planner only tries
+  rhythms within it. In 2027 that means 5 trips at about 42 to 43% in Faenza. Working days leave out weekends, Italian holidays,
   shutdowns and his holidays (`year_plan.remote_share`).
 - Stays in Faenza of 14 to 21 nights, with 28 to 42 nights in Poznań between
   them by default. The planner also tries other stay and gap lengths and keeps
