@@ -181,8 +181,10 @@ def describe(m: MonthFares, depart_after: time | None, arrive_by: time | None) -
     stamp = f"{m.checked_at:%Y-%m-%d %H:%M} UTC"
     lines = [f"{m.origin}-{m.destination} {m.month}: Ryanair farfnd, {age}, checked {stamp}"]
     fitting = [d for d in m.days if d.fits(depart_after, arrive_by)]
-    if not fitting:
-        lines.append("  no flight inside the time window this month")
+    if not m.days:
+        lines.append("  no Ryanair flight on this route this month")
+    elif not fitting:
+        lines.append(f"  {len(m.days)} days with flights, none inside the time window")
     for d in fitting:
         day = f"{d.depart:%a %Y-%m-%d} {d.depart:%H:%M}-{d.arrive:%H:%M}"
         lines.append(f"  {day}  from {d.price_eur:.2f} EUR")

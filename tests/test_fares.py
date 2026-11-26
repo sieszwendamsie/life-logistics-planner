@@ -1,5 +1,5 @@
-"""Offline tests: no network. The fixture has the same shape as Ryanair's
-cheapestPerDay answer (hand-written, not a recording: see the PR note)."""
+"""Offline tests: no network. The fixture is a real recording of Ryanair's
+cheapestPerDay answer for POZ-BGY, February 2027 (recorded 26 Nov 2026)."""
 
 import json
 from datetime import UTC, datetime, time, timedelta
@@ -28,8 +28,17 @@ class FakeFetch:
 
 def test_parse_skips_unavailable_and_sold_out() -> None:
     days = parse_month(FIXTURE.read_bytes(), "POZ", "BGY")
-    assert [d.depart.day for d in days] == [4, 5]
-    assert days[0].price_eur == 39.99 and days[0].arrive.hour == 14
+    assert len(days) == 20  # 28 days, 8 without a flight (Tuesdays and Wednesdays)
+    assert {d.depart.strftime("%a") for d in days}.isdisjoint({"Tue", "Wed"})
+    first = days[0]
+    assert (first.depart.day, f"{first.depart:%H:%M}", f"{first.arrive:%H:%M}") == (
+        1,
+        "07:55",
+        "09:45",
+    )
+    body = json.loads(FIXTURE.read_text())
+    body["outbound"]["fares"][0]["soldOut"] = True
+    assert len(parse_month(json.dumps(body).encode(), "POZ", "BGY")) == 19
 
 
 @pytest.mark.parametrize("raw", [b"not json", b"{}", b'{"outbound": {"fares": [{"price": {}}]}}'])
@@ -40,16 +49,16 @@ def test_parse_rejects_unexpected_shapes(raw: bytes) -> None:
 
 def test_parse_rejects_other_currency() -> None:
     body = json.loads(FIXTURE.read_text())
-    body["outbound"]["fares"][1]["price"]["currencyCode"] = "PLN"
+    body["outbound"]["fares"][0]["price"]["currencyCode"] = "PLN"
     with pytest.raises(FareError, match="PLN"):
         parse_month(json.dumps(body).encode(), "POZ", "BGY")
 
 
 def test_window_filter() -> None:
-    days = parse_month(FIXTURE.read_bytes(), "POZ", "BGY")
-    midday, early = days
+    days = {d.depart.day: d for d in parse_month(FIXTURE.read_bytes(), "POZ", "BGY")}
+    midday, early = days[4], days[5]  # Thu 12:40-14:30, Fri 06:00-07:50
     assert midday.fits(time(7, 0), time(18, 30))
-    assert not early.fits(time(7, 0), time(18, 30))  # departs 05:45
+    assert not early.fits(time(7, 0), time(18, 30))
     assert early.fits(None, None)
     assert not midday.fits(None, time(14, 0))  # lands 14:30
 
@@ -62,7 +71,7 @@ def test_live_fetch_then_cache_hit(tmp_path: Path) -> None:
     again = month_fares("POZ", "BGY", "2027-02", fetch=fetch, cache_dir=tmp_path, now=later)
     assert again.from_cache and len(fetch.urls) == 1
     assert again.checked_at == NOW and again.source_url == first.source_url
-    assert len(again.days) == 2
+    assert len(again.days) == 20
 
 
 def test_stale_cache_is_refetched_and_never_used_when_offline(tmp_path: Path) -> None:
@@ -94,7 +103,7 @@ def test_describe_shows_source_and_check_time(tmp_path: Path) -> None:
     )
     text = "\n".join(describe(m, time(7, 0), time(18, 30)))
     assert "live, checked 2026-11-25 22:00 UTC" in text
-    assert "Thu 2027-02-04 12:40-14:30" in text and "05:45" not in text
+    assert "Thu 2027-02-04 12:40-14:30" in text and "06:00-07:50" not in text
 
 
 def test_cli_reports_failure_instead_of_guessing(monkeypatch, capsys) -> None:
@@ -115,3 +124,13 @@ def test_cli_reports_failure_instead_of_guessing(monkeypatch, capsys) -> None:
     )
     out = capsys.readouterr().out
     assert code == 2 and "NOT live-checked" in out and "find-flights" in out
+
+
+def test_describe_tells_no_route_from_no_fitting_time(tmp_path: Path) -> None:
+    empty = b'{"outbound": {"fares": []}}'
+    m = month_fares("POZ", "BLQ", "2027-02", fetch=FakeFetch(empty), cache_dir=tmp_path, now=NOW)
+    assert "no Ryanair flight on this route" in "\n".join(describe(m, None, None))
+    m = month_fares(
+        "POZ", "BGY", "2027-02", fetch=FakeFetch(FIXTURE.read_bytes()), cache_dir=tmp_path, now=NOW
+    )
+    assert "20 days with flights, none inside" in "\n".join(describe(m, time(23, 0), None))
