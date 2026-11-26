@@ -8,6 +8,8 @@
       <span style="--c: var(--home)">Poznań</span>
       <span style="--c: var(--stay)">Faenza, at La Suite</span>
       <span class="solo-key">Faenza, La Suite blocked (you alone)</span>
+      <span class="sb-key">La Suite blocked, you're not in Faenza (corner)</span>
+      <span style="--c: var(--trip)">Other trip (UK), working remotely</span>
       <span style="--c: var(--holiday)">Holiday, shutdown, Italian holiday or its long weekend</span>
       <span class="ring" style="--c: var(--holiday)">Same, during a Faenza stay</span>
       <span class="ring" style="--c: var(--we-ring)">Weekend</span>
@@ -27,7 +29,7 @@
         <div class="m">{{ name }}</div>
         {% if mode == "week" %}{% for _ in range(lead) %}<div></div>{% endfor %}{% endif %}
         {% for cell in cells %}
-        <div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}{% if cell.off %} off{% endif %}" title="{{ cell.title }}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}</div>
+        <div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}{% if cell.off %} off{% endif %}{% if cell.suite_blocked %} sb{% endif %}" title="{{ cell.title }}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}</div>
         {% endfor %}
       </div>
       {% endfor %}

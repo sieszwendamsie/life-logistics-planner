@@ -22,6 +22,7 @@ class Cell:
     pl: bool  # Polish public holiday
     title: str
     off: bool = False  # a free day off inside a Faenza stay (outlined in holiday colour)
+    suite_blocked: bool = False  # La Suite not free that night while you're not in Faenza
 
 
 def _span(a: date, b: date) -> list[date]:
@@ -79,6 +80,8 @@ def _kind(c: Constraints, r: YearResult, d: date, free: dict[date, str]) -> tupl
             return "holiday", f"Holiday {b.start:%d %b} to {b.end:%d %b}"
     if d in free:
         return "holiday", free[d]
+    if any(t.start <= d <= t.end for t in r.other_travel):
+        return "trip", "Other trip (e.g. UK), working remotely"
     return "home", "Poznań"
 
 
@@ -92,6 +95,7 @@ def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell], int]]:
     it = {h.day: h.name for h in c.holidays if h.country == "IT"}
     pl = {h.day: h.name for h in c.holidays if h.country == "PL"}
     free = free_days_off(c, r.plan.year)
+    blocked = set(r.suite_blocked)
     rows = []
     for m in range(1, 13):
         first = date(r.plan.year, m, 1)
@@ -99,6 +103,8 @@ def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell], int]]:
         d = first
         while d.month == m:
             kind, title = _kind(c, r, d, free)
+            if kind not in ("stay", "solo") and d in blocked:
+                title += " · La Suite blocked"
             extra = [f"IT: {it[d]}" for _ in [0] if d in it] + [
                 f"PL: {pl[d]}" for _ in [0] if d in pl
             ]
@@ -111,6 +117,7 @@ def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell], int]]:
                     pl=d in pl,
                     title=f"{d:%a %d %b}: {title}" + (f" · {' · '.join(extra)}" if extra else ""),
                     off=kind in ("stay", "solo") and d in free,
+                    suite_blocked=kind not in ("stay", "solo") and d in blocked,
                 )
             )
             d += timedelta(days=1)
@@ -222,7 +229,7 @@ def _why(c: Constraints, r: YearResult, b: Block) -> str:
         if h.start <= b.start and b.end <= h.end or (b.start <= h.start and h.end <= b.end):
             if h == r.long_pick:
                 return "Summer holiday (around the shutdown)"
-            return "Two-week holiday"
+            return "Two-week holiday" if h.days >= 14 else f"{h.days}-day holiday"
     if any(s.start <= b.end and b.start <= s.end for s in c.shutdown):
         return "Christmas shutdown" if b.start.month in (12, 1) else "Shutdown"
     names = [
@@ -296,5 +303,6 @@ def render_options(
         peaks=results[0].plan.peaks,
         max_lw=results[0].plan.trip_long_weekends,
         costs=costs,
+        presence=c.presence,
         anywhere=results[0].plan.long_weekends_anywhere,
     )

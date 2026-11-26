@@ -26,9 +26,12 @@ h2 { font-size: 11pt; margin: 0 0 1.5mm; }
    holiday or free day off black; a free day off during a stay grey with a black frame. */
 .home { background: #fff; }
 .stay { background: #c4c4c4; }
+.trip { background: radial-gradient(#000 0.35mm, transparent 0.4mm) 0 0 / 1.6mm 1.6mm, #fff; }
 .solo { background: repeating-linear-gradient(135deg, #c4c4c4 0 1.2mm, #fff 1.2mm 2.2mm); }
 .holiday { background: #000; color: #fff; }
 .off { box-shadow: inset 0 0 0 0.8mm #000; }
+/* La Suite blocked while you're not in Faenza: a striped corner. */
+.sb { background-image: linear-gradient(135deg, transparent 60%, #8a8a8a 60%); }
 
 .grid { display: grid; grid-template-columns: 13mm repeat(37, 1fr); gap: 0.5mm; }
 .grid .m { font-weight: 700; font-size: 9pt; align-self: center; }
@@ -47,7 +50,9 @@ h2 { font-size: 11pt; margin: 0 0 1.5mm; }
 
 .cols { display: grid; grid-template-columns: 62mm 1fr; gap: 4mm 6mm; align-items: start; flex: 1; min-height: 0; }
 .cols > .wide { grid-column: 1 / -1; }
-td, th { padding: 0.7mm 1.5mm; }
+td, th { padding: 0.5mm 1.5mm; line-height: 1.25; }
+.wide td { font-size: 7.6pt; }
+.cols > div > table td { font-size: 7.8pt; }
 .kv { display: grid; grid-template-columns: 1fr auto; gap: 1mm 4mm; font-size: 10pt; }
 .kv span:nth-child(even) { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
 .kv .best::after { content: " ★"; }
@@ -68,6 +73,8 @@ ul { margin: 0; padding-left: 4mm; font-size: 8.5pt; }
     <span><i class="sw home"></i>Poznań</span>
     <span><i class="sw stay"></i>Faenza, at La Suite</span>
     <span><i class="sw solo"></i>Faenza, La Suite blocked (you alone)</span>
+    <span><i class="sw home sb"></i>La Suite blocked, you're not in Faenza</span>
+    <span><i class="sw trip"></i>Other trip (UK), remote work</span>
     <span><i class="sw holiday"></i>Holiday, shutdown, Italian holiday or its long weekend</span>
     <span><i class="sw stay off"></i>Same, during a Faenza stay</span>
     <span><b>12</b>&nbsp;bold, thick frame = weekend</span>
@@ -80,7 +87,7 @@ ul { margin: 0; padding-left: 4mm; font-size: 8.5pt; }
     {% for name, cells, lead in o.months %}
     <div class="m">{{ name }}</div>
     {% for _ in range(lead) %}<div class="blank"></div>{% endfor %}
-    {% for cell in cells %}<div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}{% if cell.off %} off{% endif %}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}</div>{% endfor %}
+    {% for cell in cells %}<div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}{% if cell.off %} off{% endif %}{% if cell.suite_blocked %} sb{% endif %}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}</div>{% endfor %}
     {% for _ in range(37 - lead - cells | length) %}<div class="blank"></div>{% endfor %}
     {% endfor %}
   </div>
@@ -129,7 +136,7 @@ ul { margin: 0; padding-left: 4mm; font-size: 8.5pt; }
             <td class="num">{{ st.end.strftime('%a %d %b') }}</td>
             <td class="num">{{ st.nights }}</td>
             {% if costs %}<td class="num">{% if k %}€{{ '{:,}'.format(k.la_suite + k.elsewhere + k.car + k.flights) }}{% if k.missing %}*{% endif %}{% endif %}</td>{% endif %}
-            <td>{% if k %}La Suite €{{ k.la_suite }}{% if k.elsewhere %}, elsewhere €{{ k.elsewhere }}{% endif %}, car €{{ k.car }}, family flights {% if k.missing %}not on sale yet*{% else %}€{{ k.flights }} ({{ k.out.route }} {{ k.out.day[8:10] }}/{{ k.out.day[5:7] }} {{ k.out.dep }}, {{ k.back.route }} {{ k.back.day[8:10] }}/{{ k.back.day[5:7] }} {{ k.back.dep }}){% endif %}. {% endif %}{% if st.fixed %}{{ st.note }}. {% endif %}{% if st.blocked_nights %}La Suite blocked {{ st.blocked_nights }} night{{ 's' if st.blocked_nights != 1 }}. {% endif %}{% if st.long_weekends %}Long weekend in Faenza: {{ st.long_weekends | join(', ') }}. {% endif %}{% if st.pl_holidays %}Polish holiday: {{ st.pl_holidays | join(', ') }}.{% endif %}</td>
+            <td>{% if k %}La Suite €{{ k.la_suite }}{% if k.elsewhere %}, elsewhere €{{ k.elsewhere }}{% endif %}, car €{{ k.car }}, family flights {% if k.missing %}not on sale yet*{% else %}€{{ k.flights }} ({{ k.out.route }} {{ k.out.day[8:10] }}/{{ k.out.day[5:7] }} {{ k.out.dep }}{% if k.back %}, {{ k.back.route }} {{ k.back.day[8:10] }}/{{ k.back.day[5:7] }} {{ k.back.dep }}{% else %}; home after the holiday, not included{% endif %}){% endif %}. {% endif %}{% if st.fixed %}{{ st.note }}. {% endif %}{% if st.blocked_nights %}La Suite blocked {{ st.blocked_nights }} night{{ 's' if st.blocked_nights != 1 }}. {% endif %}{% if st.long_weekends %}Long weekend in Faenza: {{ st.long_weekends | join(', ') }}. {% endif %}{% if st.pl_holidays %}Polish holiday: {{ st.pl_holidays | join(', ') }}.{% endif %}</td>
           </tr>
         {% endfor %}
         </tbody>

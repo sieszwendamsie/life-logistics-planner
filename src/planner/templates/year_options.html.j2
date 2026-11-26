@@ -30,7 +30,7 @@ nav.jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 <main>
   <header style="display:grid; gap:8px">
     <h1>{{ year }}: {{ options | length }} ways to plan the year</h1>
-    {% set rs = options[0].r.plan.remote_share %}<p class="sub">Each option keeps your rules: about 4 weeks around the summer shutdown, at least a week off around Basia's birthday, at most 2 extra days at Christmas, {{ ((1 - rs[1]) * 100) | round | int }}–{{ ((1 - rs[0]) * 100) | round | int }}% of working days in Faenza and the fewest trips that allows. They differ in which holidays and bridge days you take. Nothing is booked or priced; flights are checked live per stay later.</p>
+    {% set pl = options[0].r.plan %}{% set rs = pl.remote_share %}<p class="sub">Each option keeps your rules: about 4 weeks around the summer shutdown, a second holiday of {{ pl.second_holiday_days[0] }}–{{ pl.second_holiday_days[1] }} days{% if pl.second_holiday_joined %} that starts where a Faenza stay ends{% endif %}, at most 2 extra days at Christmas, {{ (rs[0] * 100) | round | int }}–{{ (rs[1] * 100) | round | int }}% remote work{% if pl.away_nights %}, never more than {{ (pl.away_nights[1] / 7) | round | int }} weeks away from the Faenza office (except the summer holiday){% endif %}, stays of at most 28 nights and the fewest trips that allows. They differ in which holidays, bridge days and UK weeks you take. Nothing is booked; flights are checked live per stay later.</p>
   </header>
 
   <section>
@@ -81,7 +81,7 @@ nav.jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
               <td class="num">{{ st.end.strftime('%a %d %b') }}</td>
               <td class="num">{{ st.nights }}</td>
               {% if costs %}<td class="num">{% if k %}€{{ '{:,}'.format(k.la_suite + k.elsewhere + k.car + k.flights) }}{% if k.missing %}*{% endif %}{% endif %}</td>{% endif %}
-              <td>{% if k %}La Suite €{{ k.la_suite }}{% if k.elsewhere %}, elsewhere €{{ k.elsewhere }}{% endif %}, car €{{ k.car }}, family flights {% if k.missing %}not on sale yet*{% else %}€{{ k.flights }} ({{ k.out.route }} {{ k.out.day[8:10] }}/{{ k.out.day[5:7] }} {{ k.out.dep }}, {{ k.back.route }} {{ k.back.day[8:10] }}/{{ k.back.day[5:7] }} {{ k.back.dep }}){% endif %}. {% endif %}{% if st.fixed %}{{ st.note }}. {% endif %}{% if st.blocked_nights %}La Suite blocked {{ st.blocked_nights }} night{{ 's' if st.blocked_nights != 1 }}. {% endif %}{% if st.long_weekends %}Long weekend in Faenza: {{ st.long_weekends | join(', ') }}. {% endif %}{% if st.pl_holidays %}Polish holiday: {{ st.pl_holidays | join(', ') }}.{% endif %}</td>
+              <td>{% if k %}La Suite €{{ k.la_suite }}{% if k.elsewhere %}, elsewhere €{{ k.elsewhere }}{% endif %}, car €{{ k.car }}, family flights {% if k.missing %}not on sale yet*{% else %}€{{ k.flights }} ({{ k.out.route }} {{ k.out.day[8:10] }}/{{ k.out.day[5:7] }} {{ k.out.dep }}{% if k.back %}, {{ k.back.route }} {{ k.back.day[8:10] }}/{{ k.back.day[5:7] }} {{ k.back.dep }}{% else %}; home after the holiday, not included{% endif %}){% endif %}. {% endif %}{% if st.fixed %}{{ st.note }}. {% endif %}{% if st.blocked_nights %}La Suite blocked {{ st.blocked_nights }} night{{ 's' if st.blocked_nights != 1 }}. {% endif %}{% if st.long_weekends %}Long weekend in Faenza: {{ st.long_weekends | join(', ') }}. {% endif %}{% if st.pl_holidays %}Polish holiday: {{ st.pl_holidays | join(', ') }}.{% endif %}</td>
             </tr>
           {% endfor %}
           </tbody>
@@ -105,7 +105,7 @@ nav.jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
     <ul>
       <li>Holidays cost only their working days. Weekends, Italian holidays (2 June included) and shutdowns are free; Polish holidays are paid working days.</li>
       <li>Bridge days are paid days off next to an Italian holiday that turn it into a long weekend. {% if anywhere %}Up to {{ max_lw }} of them are spent in Faenza, inside a stay (at La Suite) or next to its travel days, so stays can be longer and trips fewer.{% else %}Up to {{ max_lw }} of them can be spent in Faenza when a stay starts or ends there, so you travel on the free days; never in the middle of a stay.{% endif %}</li>
-      <li>Basia's birthday (5–13 Mar) and Easter (26–29 Mar) are at home in Poznań in every option.</li>
+      <li>Family dates come from your calendar: {% for p in presence %}{{ p.title }} ({{ p.start.strftime('%d %b') }}{% if p.end != p.start %}–{{ p.end.strftime('%d %b') }}{% endif %}, {{ 'must' if p.strength == 'must' else 'preferably' }} in {{ 'Poland' if p.where == 'PL' else 'Italy' if p.where == 'IT' else p.where }}){{ '; ' if not loop.last }}{% endfor %}.</li>
       <li>February stay 31 Jan to 28 Feb is fixed (not approved yet).</li>
       <li>School holidays used for prices: {% for p in peaks %}{{ p.name }} {{ p.start.strftime('%d %b') }}–{{ p.end.strftime('%d %b') }}{{ ', ' if not loop.last }}{% endfor %}.</li>
     </ul>

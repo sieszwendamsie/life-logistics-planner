@@ -267,6 +267,8 @@ class YearOption(BaseModel):
     # Overrides of the plan's settings of the same name, for this option only.
     trip_long_weekends: int | None = None
     long_weekends_anywhere: bool | None = None
+    # Extra trips for this option only (e.g. a UK visit); no Faenza stay over them.
+    other_travel: list[DateRange] = Field(default_factory=list)
     # Paid working days taken off to turn a public holiday into a long weekend.
     bridge_days: list[date] = Field(default_factory=list)
 
@@ -305,6 +307,12 @@ class YearPlan(BaseModel):
     # If true, such a long weekend may also fall in the middle of a stay (spent at
     # La Suite), which allows longer stays and fewer trips.
     long_weekends_anywhere: bool = False
+    # If set: nights between two stays, holidays included except the long summer
+    # holiday, i.e. time away from the Faenza office (Martin: 4 to 6 weeks).
+    away_nights: tuple[int, int] | None = None
+    # The second holiday starts where a stay ends or ends where one starts
+    # (travel on from Faenza, e.g. to Garda or Croatia).
+    second_holiday_joined: bool = False
     # Months the two-week holiday should fall in (empty: any month), e.g. [3, 4].
     second_holiday_months: list[int] = Field(default_factory=list)
     # Pick these holidays (by start date) instead of the best-ranked ones.

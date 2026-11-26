@@ -226,6 +226,7 @@ class Stay:
     office: list[DateRange] = field(default_factory=list)
     # Bridge-day long weekends spent in Faenza at the start or end of the stay.
     long_weekends: list[str] = field(default_factory=list)
+    joined: bool = False  # the one-week holiday starts or ends where this stay does
     cost: float = 0.0
 
     @property
@@ -280,7 +281,7 @@ def _evaluate(
     stay.cost = (
         3 * stay.blocked_nights
         + 2 * len(stay.pl_holidays)
-        + 5 * len(stay.pl_wishes)
+        + 15 * len(stay.pl_wishes)
         + 2 * len(stay.peak_travel)
         + 1 * len(stay.school_peak_travel)
         + abs(stay.nights - target) / 7
@@ -360,6 +361,8 @@ def plan_stays(
     plan: YearPlan,
     holidays: list[Block],
     bridges: frozenset[date] = frozenset(),
+    not_home: list[Block] | None = None,
+    joined: Block | None = None,
 ) -> list[Stay]:
     """The cheapest chain of stays through the year (fewest compromises).
 
@@ -373,12 +376,21 @@ def plan_stays(
         (r.start for r in c.shutdown if r.start.year == plan.year and r.start.month == 12),
         date(plan.year, 12, 31),
     )
+    # `not_home`: holidays that don't count as Poznań time in a gap (default: all).
+    # `joined`: a holiday that should start where a stay ends, or end where one
+    # starts (travel on from Faenza), so a stay may touch it.
+    gap_holidays = holidays if not_home is None else not_home
     no_go = [
         *c.shutdown,
         *c.leave,
         *c.martin_away(),
         *c.other_travel,
-        *(DateRange(start=h.start, end=h.end) for h in holidays),
+        *(
+            DateRange(start=h.start + DAY, end=h.end - DAY)
+            if h is joined
+            else DateRange(start=h.start, end=h.end)
+            for h in holidays
+        ),
     ]
     no_go = [r for r in no_go if not (r.start == r.end and r.start in bridges)]
     fixed = [
@@ -390,6 +402,11 @@ def plan_stays(
     nodes = sorted(
         [*fixed, *_candidates(c, acc, plan, no_go_free, xmas, bridges)], key=lambda s: s.start
     )
+    if joined:
+        for st in nodes:
+            if not st.fixed and (st.end == joined.start or st.start == joined.end):
+                st.joined = True
+                st.cost -= 200  # strongly prefer a chain that travels on to the holiday
     must = [*plan.fixed_stays, *c.martin_italy()]
 
     def between_ok(a: date, b: date) -> bool:
@@ -397,7 +414,7 @@ def plan_stays(
         return not any(a < m.start and m.end < b for m in must if m.start.year == plan.year)
 
     def gap_ok(a: date, b: date, relaxed: bool) -> bool:
-        n = _home_nights(a, b, holidays)
+        n = _home_nights(a, b, gap_holidays)
         lo = 0 if relaxed else plan.min_home_nights
         return lo <= n <= plan.max_home_nights and between_ok(a, b)
 
@@ -423,7 +440,7 @@ def plan_stays(
             if prev.end > st.start or not best[j]:
                 continue
             if gap_ok(prev.end, st.start, relaxed=st.fixed or prev.fixed):
-                gap = _home_nights(prev.end, st.start, holidays)
+                gap = _home_nights(prev.end, st.start, gap_holidays)
                 step = st.cost + abs(gap - target) / 7
                 for k, (cost, _, _) in best[j].items():
                     offer(k + own, cost + step, j, k)
@@ -432,7 +449,8 @@ def plan_stays(
     ends = [
         (cost, i, k)
         for i, st in enumerate(nodes)
-        if _home_nights(st.end, xmas, holidays) <= plan.max_home_nights and between_ok(st.end, xmas)
+        if _home_nights(st.end, xmas, gap_holidays) <= plan.max_home_nights
+        and between_ok(st.end, xmas)
         for k, (cost, _, _) in best[i].items()
     ]
     if not ends:
@@ -464,6 +482,8 @@ class YearResult:
     note: str = ""
     bridges: list[date] = field(default_factory=list)  # paid days for long weekends
     breaks: list[Block] = field(default_factory=list)  # every run of 3+ days off
+    suite_blocked: list[date] = field(default_factory=list)  # nights La Suite is not free
+    other_travel: list[DateRange] = field(default_factory=list)  # e.g. UK visits
 
     @property
     def holidays(self) -> list[Block]:
@@ -538,6 +558,8 @@ def _plan_with_share(
     plan: YearPlan,
     taken: list[Block],
     bridges: frozenset[date] = frozenset(),
+    not_home: list[Block] | None = None,
+    joined: Block | None = None,
 ) -> tuple[YearPlan, list[Stay], int, int]:
     """The rhythm (configured or tried) with the remote share in range and the
     fewest trips; if none is in range, the one closest to it."""
@@ -548,8 +570,8 @@ def _plan_with_share(
             update={
                 "min_stay_nights": a,
                 "max_stay_nights": b,
-                "min_home_nights": g,
-                "max_home_nights": h,
+                "min_home_nights": plan.away_nights[0] if plan.away_nights else g,
+                "max_home_nights": plan.away_nights[1] if plan.away_nights else h,
             }
         )
         for a, b, g, h in RHYTHMS
@@ -558,7 +580,7 @@ def _plan_with_share(
     ]
     best: tuple[tuple, YearPlan, list[Stay], int, int] | None = None
     for i, p in enumerate(tries):
-        stays = plan_stays(c, acc, p, taken, bridges)
+        stays = plan_stays(c, acc, p, taken, bridges, not_home, joined)
         if not stays:
             continue
         work, office = work_split(c, plan.year, stays, taken)
@@ -566,7 +588,9 @@ def _plan_with_share(
         miss = 0.0 if lo <= share <= hi else min(abs(share - lo), abs(share - hi))
         # Inside the range: fewest trips (Martin prefers longer stays), then the
         # share closest to the middle; the configured rhythm wins ties.
-        score = (miss, len(stays), abs(share - mid), i)
+        # Then the fewest family events missed (#pref Poland), then the share.
+        wishes = sum(len(st.pl_wishes) for st in stays)
+        score = (miss, len(stays), wishes, abs(share - mid), i)
         if best is None or score < best[0]:
             best = (score, p, stays, work, office)
     if best is None:
@@ -633,7 +657,10 @@ def build_options(c: Constraints, acc: AccommodationFile) -> list[YearResult]:
                 "options": [],
             }
         )
-        r = build_year(c.model_copy(update={"year_plan": changed}), acc, opt.bridge_days)
+        co = c.model_copy(
+            update={"year_plan": changed, "other_travel": [*c.other_travel, *opt.other_travel]}
+        )
+        r = build_year(co, acc, opt.bridge_days)
         r.label, r.note = opt.label, opt.note
         results.append(r)
     return results
@@ -666,7 +693,13 @@ def build_year(
         if not c.day_off(d) and not any(b.start <= d <= b.end for b in taken)
     )
     cb = with_bridges(c, bridges)
-    rhythm, stays, work, office = _plan_with_share(cb, acc, plan, taken, frozenset(bridges))
+    # With `away_nights`, the time between stays counts every night away from the
+    # Faenza office, holidays included, except the long summer holiday.
+    not_home = [long_pick] if plan.away_nights and long_pick else None
+    joined = second_pick if plan.second_holiday_joined else None
+    rhythm, stays, work, office = _plan_with_share(
+        cb, acc, plan, taken, frozenset(bridges), not_home, joined
+    )
     return YearResult(
         plan=rhythm,
         long_options=long_options,
@@ -680,6 +713,8 @@ def build_year(
         office_days=office,
         bridges=bridges,
         breaks=breaks(cb, plan.year, taken),
+        suite_blocked=_blocked(acc, date(plan.year, 1, 1), date(plan.year + 1, 1, 1)),
+        other_travel=list(c.other_travel),
     )
 
 
@@ -722,10 +757,24 @@ def check_year(c: Constraints, r: YearResult) -> list[str]:
                     f"Holiday {b.start:%d %b}-{b.end:%d %b} falls in a no-holiday period "
                     f"({q.start:%d %b}-{q.end:%d %b})."
                 )
+    joined_ok = r.second_pick if plan.second_holiday_joined else None
     for st in r.stays:
         for b in r.holidays:
-            if st.start <= b.end and b.start <= st.end:
+            touch = b is joined_ok and (st.end == b.start or st.start == b.end)
+            if st.start <= b.end and b.start <= st.end and not touch:
                 out.append(f"Stay {st.start:%d %b}-{st.end:%d %b} overlaps a holiday.")
+    if plan.second_holiday_joined and r.second_pick and not any(st.joined for st in r.stays):
+        out.append("The one-week holiday is not joined to a Faenza stay.")
+    if plan.away_nights and r.stays:
+        lo_a, hi_a = plan.away_nights
+        free = [r.long_pick] if r.long_pick else []
+        for a, b in zip(r.stays, r.stays[1:], strict=False):
+            n = _home_nights(a.end, b.start, free)
+            if n > hi_a:
+                out.append(
+                    f"{n} nights away from the office between {a.end:%d %b} and "
+                    f"{b.start:%d %b}, max is {hi_a}."
+                )
     joined = sum(len(st.long_weekends) for st in r.stays)
     if joined > plan.trip_long_weekends:
         out.append(
@@ -772,6 +821,8 @@ def text(c: Constraints, r: YearResult) -> str:
             flags.append("office period inside")
         if st.long_weekends:
             flags.append("long weekend in Faenza: " + ", ".join(st.long_weekends))
+        if st.joined:
+            flags.append("joined to the one-week holiday")
         if st.pl_holidays:
             flags.append("Polish holiday: " + ", ".join(st.pl_holidays))
         if st.pl_wishes:

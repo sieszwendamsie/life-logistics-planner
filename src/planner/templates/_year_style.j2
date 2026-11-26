@@ -2,7 +2,7 @@
 /* Layout: one column; a wall-planner strip of 12 months up top, then the decisions as tables. */
 :root {
   --bg: #f6f7f4; --surface: #ffffff; --ink: #1d2320; --muted: #5b645f; --line: #dde1dc;
-  --home: #dfe5ea; --home-we: #b9c3cc; --we-ring: #d23b3b; --stay: #3f8f6b; --solo: #a9d6bf; --solo-stripe: #8cc4a8; --band: #f1f3ef; --holiday: #7a6fc4; --shut: #9aa19c;
+  --home: #dfe5ea; --home-we: #b9c3cc; --we-ring: #d23b3b; --stay: #3f8f6b; --solo: #a9d6bf; --solo-stripe: #8cc4a8; --band: #f1f3ef; --sb: #3f8f6b; --trip: #e7c66b; --holiday: #7a6fc4; --shut: #9aa19c;
   --it: #c0392b; --pl: #2f5fa7; --on-solo: #1d2320; --accent: #2d6a4f; --pick: rgba(63, 143, 107, 0.12);
   --font-head: "Space Grotesk", system-ui, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -10,7 +10,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #141816; --surface: #1c211f; --ink: #e6e9e6; --muted: #a0a9a4; --line: #313834;
-    --home: #2c3540; --home-we: #46525f; --we-ring: #f06a6a; --stay: #4fa881; --solo: #2f5f4a; --solo-stripe: #3a6f57; --band: #232926; --holiday: #988de0; --shut: #5f6762;
+    --home: #2c3540; --home-we: #46525f; --we-ring: #f06a6a; --stay: #4fa881; --solo: #2f5f4a; --solo-stripe: #3a6f57; --band: #232926; --sb: #6fd3a6; --trip: #8a7232; --holiday: #988de0; --shut: #5f6762;
     --it: #ec7a6c; --pl: #7ea6e6; --accent: #7cc5a1; --pick: rgba(79, 168, 129, 0.16);
     --on-solo: #e6e9e6;
     color-scheme: dark;
@@ -18,7 +18,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #141816; --surface: #1c211f; --ink: #e6e9e6; --muted: #a0a9a4; --line: #313834;
-  --home: #2c3540; --home-we: #46525f; --we-ring: #f06a6a; --stay: #4fa881; --solo: #2f5f4a; --solo-stripe: #3a6f57; --band: #232926; --holiday: #988de0; --shut: #5f6762;
+  --home: #2c3540; --home-we: #46525f; --we-ring: #f06a6a; --stay: #4fa881; --solo: #2f5f4a; --solo-stripe: #3a6f57; --band: #232926; --sb: #6fd3a6; --trip: #8a7232; --holiday: #988de0; --shut: #5f6762;
   --it: #ec7a6c; --pl: #7ea6e6; --accent: #7cc5a1; --pick: rgba(79, 168, 129, 0.16);
   --on-solo: #e6e9e6;
   color-scheme: dark;
@@ -74,7 +74,7 @@ section { display: grid; gap: 12px; min-width: 0; }
 .d.we { font-weight: 700; }
 /* Weekends: red ring everywhere, and a darker shade of whatever colour the day has. */
 .d.we:not(.home) { filter: brightness(0.84) saturate(1.15); }
-.home.we { background: var(--home-we); }
+.home.we { background-color: var(--home-we); }
 .d.we::after {
   content: ""; position: absolute; left: 3px; right: 3px; bottom: 2px; height: 2px;
   border-radius: 1px; background: currentColor; opacity: 0.55;
@@ -83,8 +83,11 @@ section { display: grid; gap: 12px; min-width: 0; }
 .d.we { box-shadow: inset 0 0 0 2px var(--we-ring); }
 .d.we.off { box-shadow: inset 0 0 0 2px var(--we-ring), inset 0 0 0 4px var(--holiday); }
 .home { background: var(--home); }
+.trip { background: var(--trip); color: var(--ink); }
 .stay { background: var(--stay); color: var(--surface); }
 .solo { background: repeating-linear-gradient(135deg, var(--solo) 0 4px, var(--solo-stripe) 4px 8px); color: var(--on-solo); }
+.d.sb { background-image: linear-gradient(135deg, transparent 62%, var(--sb) 62%); }
+.legend .sb-key::before { background: linear-gradient(135deg, var(--home) 50%, var(--sb) 50%); }
 .legend .solo-key::before { background: repeating-linear-gradient(135deg, var(--solo) 0 3px, var(--solo-stripe) 3px 6px); }
 .holiday { background: var(--holiday); color: var(--surface); }
 .d i { position: absolute; top: 2px; width: 5px; height: 5px; border-radius: 50%; }

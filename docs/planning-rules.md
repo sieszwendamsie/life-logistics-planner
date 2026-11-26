@@ -46,6 +46,16 @@ Real values (home address, prices) live in the gitignored `data/` files.
   week after Easter.
 - **Easter**: at least one option takes the extra days off in the week after
   Easter Monday (30 to 31 March), not before.
+- **At most 4 to 6 weeks away from the Faenza office** between two stays, holidays
+  and UK trips included, except the long summer holiday (Martin, 26 Nov 2026;
+  `year_plan.away_nights`).
+- **One-week holiday end of April or early May**, starting where a Faenza stay
+  ends (travel on from Faenza, e.g. Garda or Croatia;
+  `second_holiday_joined`, `second_holiday_months: [4, 5]`,
+  `second_holiday_days: [7, 10]`). Basia's birthday is now a long weekend
+  (6 to 9 March), party in Poznań on the 7th.
+- **UK visits**: Martin can work remotely from the UK for a week or two; that
+  time counts as away from Faenza (`options[].other_travel`).
 - **No longer holidays from about 20 September to the end of the year, or in January
   and February** (busy at work; Martin, 26 Nov 2026). Only long weekends there
   (`year_plan.no_holiday`). The Christmas shutdown plus its 1 to 2 extra days
