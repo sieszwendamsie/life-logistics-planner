@@ -46,6 +46,10 @@ h2 { font-size: 11pt; margin: 0 0 1.5mm; }
 .d i.it { right: 0.8mm; background: currentColor; }
 .d i.pl { left: 0.8mm; border: 0.35mm solid currentColor; }
 .holiday i.pl, .holiday i.it { border-color: #fff; }
+.d b.ev, .evk { position: absolute; bottom: 0.5mm; right: 0.6mm; font-size: 6.5pt; line-height: 1; font-weight: 800; padding: 0.3mm 0.6mm; background: #fff; color: #000; border: 0.25mm solid #000; }
+.evk { position: static; }
+.ev-list { display: grid; gap: 0.7mm; font-size: 7pt; margin-bottom: 1mm; }
+.ev-list .num { display: inline-block; min-width: 13mm; }
 .rowgap { grid-column: 1 / -1; height: 0.6mm; }
 
 .cols { display: grid; grid-template-columns: 62mm 1fr; gap: 4mm 6mm; align-items: start; flex: 1; min-height: 0; }
@@ -80,6 +84,7 @@ ul { margin: 0; padding-left: 4mm; font-size: 8.5pt; }
     <span><b>12</b>&nbsp;bold, thick frame = weekend</span>
     <span>● Italian holiday</span>
     <span>○ Polish holiday</span>
+    <span><b class="evk">M</b> motorcycle event · <b class="evk">E</b> family or work event</span>
   </div>
   <div class="grid">
     <div></div>
@@ -87,7 +92,7 @@ ul { margin: 0; padding-left: 4mm; font-size: 8.5pt; }
     {% for name, cells, lead in o.months %}
     <div class="m">{{ name }}</div>
     {% for _ in range(lead) %}<div class="blank"></div>{% endfor %}
-    {% for cell in cells %}<div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}{% if cell.off %} off{% endif %}{% if cell.suite_blocked %} sb{% endif %}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}</div>{% endfor %}
+    {% for cell in cells %}<div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}{% if cell.off %} off{% endif %}{% if cell.suite_blocked %} sb{% endif %}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}{% if cell.event %}<b class="ev">{{ cell.event }}</b>{% endif %}</div>{% endfor %}
     {% for _ in range(37 - lead - cells | length) %}<div class="blank"></div>{% endfor %}
     {% endfor %}
   </div>
@@ -114,6 +119,13 @@ ul { margin: 0; padding-left: 4mm; font-size: 8.5pt; }
       </div>
       {% if options | length > 1 %}<p class="note">★ best of the {{ options | length }} options.</p>{% endif %}
       {% if costs %}<p class="note">{{ costs.short_note }}</p>{% endif %}
+      {% if o.events %}
+      <h2 style="margin-top:3mm">Events</h2>
+      <div class="ev-list">
+        {% for e in o.events %}<div><span class="num">{{ e.short_dates }}</span> <b class="evk">{{ e.mark }}</b> {{ e.short }}{% if e.provisional %}*{% endif %}</div>{% endfor %}
+      </div>
+      {% if o.events | selectattr('provisional') | list %}<p class="note" style="margin:0">* provisional: 2027 date not out yet, same weekend as 2026 (or proposed).</p>{% endif %}
+      {% endif %}
     </div>
     <div>
       <h2>Breaks of 3 days or more</h2>

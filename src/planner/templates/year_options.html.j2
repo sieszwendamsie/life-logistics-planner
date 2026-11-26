@@ -87,6 +87,19 @@ nav.jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
           </tbody>
         </table>
       </div>
+      {% if o.events %}
+      <div class="card table-wrap">
+        <h3 style="margin:0">Events</h3>
+        <table>
+          <thead><tr><th>Dates</th><th></th><th>Event</th></tr></thead>
+          <tbody>
+          {% for e in o.events %}
+            <tr><td class="num">{{ e.dates }}</td><td><b class="evk">{{ e.mark }}</b></td><td>{{ e.title }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
     </div>
   </section>
   {% endfor %}

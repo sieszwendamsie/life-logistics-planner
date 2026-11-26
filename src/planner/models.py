@@ -63,6 +63,8 @@ class Presence(DateRange):
     where: Literal["PL", "IT", "UK", "any"]
     who: list[Person]
     strength: Literal["must", "pref", "flex"] = "must"
+    # What kind of event, for the calendar marker: "" (family), "moto"...
+    tag: str = ""
 
 
 class RouteTier(BaseModel):

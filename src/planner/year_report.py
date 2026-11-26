@@ -23,6 +23,7 @@ class Cell:
     title: str
     off: bool = False  # a free day off inside a Faenza stay (outlined in holiday colour)
     suite_blocked: bool = False  # La Suite not free that night while you're not in Faenza
+    event: str = ""  # "M" a motorcycle event, "E" a family event (#must presence)
 
 
 def _span(a: date, b: date) -> list[date]:
@@ -109,6 +110,12 @@ def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell], int]]:
     it = {h.day: h.name for h in c.holidays if h.country == "IT"}
     pl = {h.day: h.name for h in c.holidays if h.country == "PL"}
     free = free_days_off(c, r.plan.year)
+    marks = {
+        d: "M" if p.tag == "moto" else "E"
+        for p in c.presence
+        if p.strength == "must"
+        for d in _span(p.start, p.end)
+    }
     for d, name in celebrations(c).items():
         free[d] = f"{name} · {free[d]}" if d in free else name
     blocked = set(r.suite_blocked)
@@ -134,6 +141,7 @@ def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell], int]]:
                     title=f"{d:%a %d %b}: {title}" + (f" · {' · '.join(extra)}" if extra else ""),
                     off=kind in ("stay", "solo") and d in free,
                     suite_blocked=kind not in ("stay", "solo") and d in blocked,
+                    event=marks.get(d, ""),
                 )
             )
             d += timedelta(days=1)
@@ -296,6 +304,25 @@ def render_options(
                 "months": _months(cb, r),
                 "breaks": brks,
                 "faenza": sum(st.nights for st in r.stays),
+                "events": [
+                    {
+                        "dates": p.start.strftime("%a %d %b")
+                        + ("" if p.end == p.start else " – " + p.end.strftime("%a %d %b")),
+                        "title": p.title,
+                        "short_dates": p.start.strftime("%d %b")
+                        if p.end == p.start
+                        else (
+                            f"{p.start:%d}–{p.end:%d %b}"
+                            if p.start.month == p.end.month
+                            else f"{p.start:%d %b}–{p.end:%d %b}"
+                        ),
+                        "short": p.title.split(" (")[0],
+                        "provisional": "provisional" in p.title or "proposed" in p.title,
+                        "mark": "M" if p.tag == "moto" else "E",
+                    }
+                    for p in sorted(c.presence, key=lambda p: p.start)
+                    if p.strength == "must" and p.start.year == r.plan.year
+                ],
             }
         )
     for key, attr, best in (
