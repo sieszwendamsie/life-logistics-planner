@@ -228,6 +228,8 @@ def _why(c: Constraints, r: YearResult, b: Block) -> str:
     ]
     if names:
         return "Long weekend: " + ", ".join(dict.fromkeys(names))
+    if any(b.start <= d <= b.end for d in r.bridges):
+        return "Long weekend (day off)"
     return "Days off"
 
 

@@ -291,6 +291,8 @@ class YearPlan(BaseModel):
     # Share of working days Martin works remotely (outside Faenza stays). If the
     # stay rhythm above misses it, `planner year` tries other stay and gap lengths.
     remote_share: tuple[float, float] = (0.55, 0.65)
+    # No long or two-week holiday may touch these (busy at work); long weekends only.
+    no_holiday: list[DateRange] = Field(default_factory=list)
     # Months the two-week holiday should fall in (empty: any month), e.g. [3, 4].
     second_holiday_months: list[int] = Field(default_factory=list)
     # Pick these holidays (by start date) instead of the best-ranked ones.

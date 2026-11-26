@@ -254,3 +254,16 @@ def test_options_compare_bridges_and_holidays() -> None:
         assert not any(st.start <= d <= st.end for d in b.bridges)
     html = render_options(c, [a, b])
     assert "Bridge day, paid" in html and "Side by side" in html
+
+
+def test_no_holiday_periods_are_respected() -> None:
+    quiet = [
+        DateRange(start=date(2027, 1, 1), end=date(2027, 2, 28)),
+        DateRange(start=date(2027, 9, 15), end=date(2027, 12, 31)),
+    ]
+    r = build_year(_c(no_holiday=quiet), ACC)
+    for b in r.second_options + r.long_options:
+        assert not any(b.start <= q.end and q.start <= b.end for q in quiet)
+    # Without the rule the cheapest two weeks are in the autumn.
+    free = build_year(_c(), ACC)
+    assert free.second_pick and free.second_pick.start.month >= 10

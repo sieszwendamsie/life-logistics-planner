@@ -104,8 +104,9 @@ def _summer_shutdown(c: Constraints, year: int) -> DateRange | None:
 
 
 def _busy(c: Constraints, plan: YearPlan) -> list[DateRange]:
-    """Dates no holiday may touch: office periods and decided stays."""
-    return [*c.martin_italy(), *plan.fixed_stays]
+    """Dates no holiday may touch: office periods, decided stays and the periods
+    Martin keeps free of longer holidays (`no_holiday`)."""
+    return [*c.martin_italy(), *plan.fixed_stays, *plan.no_holiday]
 
 
 def long_holidays(c: Constraints, plan: YearPlan, top: int = 4) -> list[Block]:
@@ -632,6 +633,13 @@ def check_year(c: Constraints, r: YearResult) -> list[str]:
     lo, hi = plan.remote_share
     if r.stays and not lo <= r.remote_share <= hi:
         out.append(f"Remote share is {r.remote_share:.0%}, target {lo:.0%}-{hi:.0%}.")
+    for b in r.holidays:
+        for q in plan.no_holiday:
+            if b.start <= q.end and q.start <= b.end:
+                out.append(
+                    f"Holiday {b.start:%d %b}-{b.end:%d %b} falls in a no-holiday period "
+                    f"({q.start:%d %b}-{q.end:%d %b})."
+                )
     for st in r.stays:
         for b in r.holidays:
             if st.start <= b.end and b.start <= st.end:
