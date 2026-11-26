@@ -49,6 +49,13 @@ Real values (home address, prices) live in the gitignored `data/` files.
 - **At most 4 to 6 weeks away from the Faenza office** between two stays, holidays
   and UK trips included, except the long summer holiday (Martin, 26 Nov 2026;
   `year_plan.away_nights`).
+- **At most 5 Faenza trips a year** (travel kept to a minimum; Martin, 26 Nov
+  2026; `year_plan.max_trips`). This wins over the 4 to 6 weeks above: the
+  planner stretches the longest time away a week at a time until 5 trips fit,
+  and says so. Stays may then hold a long weekend anywhere inside them
+  (`long_weekends_anywhere`).
+- **Avoid La Suite blocked nights in Faenza first**: they weigh more than the
+  remote share, the stay length or a missed #pref wish (Martin, 26 Nov 2026).
 - **One-week holiday end of April or early May**, starting where a Faenza stay
   ends (travel on from Faenza, e.g. Garda or Croatia;
   `second_holiday_joined`, `second_holiday_months: [4, 5]`,

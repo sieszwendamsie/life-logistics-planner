@@ -277,15 +277,25 @@ def _evaluate(
         if names:
             stay.school_peak_travel.append(f"{d:%a %d %b} ({', '.join(names)})")
     stay.office = [o for o in c.martin_italy() if _overlaps(s, e, o)]
-    target = (plan.min_stay_nights + plan.max_stay_nights) / 2
+    # With a trip limit, longer stays are better (fewer trips, more office days).
+    target = (
+        plan.max_stay_nights
+        if plan.max_trips
+        else (plan.min_stay_nights + plan.max_stay_nights) / 2
+    )
     stay.cost = (
-        3 * stay.blocked_nights
+        # Martin: avoid La Suite blocked nights in Faenza (weighs more than a
+        # week's difference in length or a missed wish).
+        25 * stay.blocked_nights
         + 2 * len(stay.pl_holidays)
         + 15 * len(stay.pl_wishes)
         + 2 * len(stay.peak_travel)
         + 1 * len(stay.school_peak_travel)
         + abs(stay.nights - target) / 7
     )
+    if plan.max_trips:
+        # Few trips leave few office days: each working day in Faenza is a plus.
+        stay.cost -= 0.5 * sum(1 for d in _days(s + DAY, e - DAY) if not c.day_off(d))
     return stay
 
 
@@ -418,48 +428,50 @@ def plan_stays(
         lo = 0 if relaxed else plan.min_home_nights
         return lo <= n <= plan.max_home_nights and between_ok(a, b)
 
-    # best[i][k]: cheapest chain ending with stay i that joins k long weekends to
-    # stays (at most plan.trip_long_weekends), as (cost, previous i, previous k).
+    # best[i][(k, n)]: cheapest chain ending with stay i that joins k long weekends
+    # to stays (at most plan.trip_long_weekends) and has n stays (at most
+    # plan.max_trips), as (cost, previous i, previous key).
     cap = plan.trip_long_weekends
+    most = plan.max_trips or len(nodes) + 1
     inf = float("inf")
-    target = (plan.min_home_nights + plan.max_home_nights) / 2
-    best: list[dict[int, tuple[float, int, int]]] = []
+    # The aimed-for gap ignores any stretch of the longest time away.
+    target = sum(plan.away_nights or (plan.min_home_nights, plan.max_home_nights)) / 2
+    Key = tuple[int, int]
+    best: list[dict[Key, tuple[float, int, Key]]] = []
     for st in nodes:
-        here: dict[int, tuple[float, int, int]] = {}
+        here: dict[Key, tuple[float, int, Key]] = {}
         own = len(st.long_weekends)
 
-        def offer(
-            k: int, cost: float, j: int, pk: int, here: dict[int, tuple[float, int, int]] = here
-        ) -> None:
-            if k <= cap and cost < here.get(k, (inf, -1, -1))[0]:
-                here[k] = (cost, j, pk)
+        def offer(key: Key, cost: float, j: int, pk: Key, here: dict = here) -> None:
+            if key[0] <= cap and key[1] <= most and cost < here.get(key, (inf, -1, (0, 0)))[0]:
+                here[key] = (cost, j, pk)
 
         if gap_ok(plan.start, st.start, relaxed=st.fixed):
-            offer(own, st.cost, -1, -1)
+            offer((own, 1), st.cost, -1, (-1, -1))
         for j, prev in enumerate(nodes[: len(best)]):
             if prev.end > st.start or not best[j]:
                 continue
             if gap_ok(prev.end, st.start, relaxed=st.fixed or prev.fixed):
                 gap = _home_nights(prev.end, st.start, gap_holidays)
                 step = st.cost + abs(gap - target) / 7
-                for k, (cost, _, _) in best[j].items():
-                    offer(k + own, cost + step, j, k)
+                for (k, n), (cost, _, _) in best[j].items():
+                    offer((k + own, n + 1), cost + step, j, (k, n))
         best.append(here)
 
     ends = [
-        (cost, i, k)
+        (cost, i, key)
         for i, st in enumerate(nodes)
         if _home_nights(st.end, xmas, gap_holidays) <= plan.max_home_nights
         and between_ok(st.end, xmas)
-        for k, (cost, _, _) in best[i].items()
+        for key, (cost, _, _) in best[i].items()
     ]
     if not ends:
         return []
-    _, i, k = min(ends)
+    _, i, key = min(ends)
     chain = []
     while i != -1:
         chain.append(nodes[i])
-        _, i, k = best[i][k]
+        _, i, key = best[i][key]
     return chain[::-1]
 
 
@@ -552,26 +564,26 @@ RHYTHMS = [
 ]
 
 
-def _plan_with_share(
+def _best_rhythm(
     c: Constraints,
     acc: AccommodationFile,
     plan: YearPlan,
     taken: list[Block],
-    bridges: frozenset[date] = frozenset(),
-    not_home: list[Block] | None = None,
-    joined: Block | None = None,
-) -> tuple[YearPlan, list[Stay], int, int]:
-    """The rhythm (configured or tried) with the remote share in range and the
-    fewest trips; if none is in range, the one closest to it."""
-    lo, hi = plan.remote_share
-    mid = (lo + hi) / 2
+    bridges: frozenset[date],
+    not_home: list[Block] | None,
+    joined: Block | None,
+    lo: float,
+    hi: float,
+    mid: float,
+    extra: int = 0,
+) -> tuple[tuple, YearPlan, list[Stay], int, int] | None:
     tries = [plan] + [
         plan.model_copy(
             update={
                 "min_stay_nights": a,
                 "max_stay_nights": b,
                 "min_home_nights": plan.away_nights[0] if plan.away_nights else g,
-                "max_home_nights": plan.away_nights[1] if plan.away_nights else h,
+                "max_home_nights": (plan.away_nights[1] if plan.away_nights else h) + extra,
             }
         )
         for a, b, g, h in RHYTHMS
@@ -586,13 +598,44 @@ def _plan_with_share(
         work, office = work_split(c, plan.year, stays, taken)
         share = 1 - office / work if work else 1.0
         miss = 0.0 if lo <= share <= hi else min(abs(share - lo), abs(share - hi))
-        # Inside the range: fewest trips (Martin prefers longer stays), then the
-        # share closest to the middle; the configured rhythm wins ties.
-        # Then the fewest family events missed (#pref Poland), then the share.
+        # Fewest La Suite blocked nights first (Martin, 26 Nov: priority), then
+        # the remote share in range, fewest trips, fewest family events missed
+        # (#pref Poland), the share closest to the middle; the configured rhythm
+        # wins ties.
         wishes = sum(len(st.pl_wishes) for st in stays)
-        score = (miss, len(stays), wishes, abs(share - mid), i)
+        blocked = sum(st.blocked_nights for st in stays if not st.fixed)
+        score = (blocked, miss, len(stays), wishes, abs(share - mid), i)
         if best is None or score < best[0]:
             best = (score, p, stays, work, office)
+    return best
+
+
+def _plan_with_share(
+    c: Constraints,
+    acc: AccommodationFile,
+    plan: YearPlan,
+    taken: list[Block],
+    bridges: frozenset[date] = frozenset(),
+    not_home: list[Block] | None = None,
+    joined: Block | None = None,
+) -> tuple[YearPlan, list[Stay], int, int]:
+    """The rhythm (configured or tried) with the remote share in range and the
+    fewest trips; if none is in range, the one closest to it."""
+    lo, hi = plan.remote_share
+    mid = (lo + hi) / 2
+    # With a trip limit, stretch the longest time away a week at a time until a
+    # plan fits (Martin: fewer trips first).
+    stretch = [0, 7, 14, 21, 28, 35, 42] if plan.max_trips and plan.away_nights else [0]
+    best: tuple[tuple, YearPlan, list[Stay], int, int] | None = None
+    for extra in stretch:
+        base = plan
+        if extra:
+            base = plan.model_copy(update={"max_home_nights": plan.max_home_nights + extra})
+        found = _best_rhythm(c, acc, base, taken, bridges, not_home, joined, lo, hi, mid, extra)
+        if found is not None and (best is None or found[0][:2] < best[0][:2]):
+            best = found
+        if best is not None and best[0][1] == 0:
+            break
     if best is None:
         return plan, [], 0, 0
     return best[1], best[2], best[3], best[4]
@@ -773,8 +816,11 @@ def check_year(c: Constraints, r: YearResult) -> list[str]:
             if n > hi_a:
                 out.append(
                     f"{n} nights away from the office between {a.end:%d %b} and "
-                    f"{b.start:%d %b}, max is {hi_a}."
+                    f"{b.start:%d %b}, max is {hi_a}"
+                    + (" (stretched to keep the trip limit)." if plan.max_trips else ".")
                 )
+    if plan.max_trips and r.trips > plan.max_trips:
+        out.append(f"{r.trips} Faenza trips, max is {plan.max_trips}.")
     joined = sum(len(st.long_weekends) for st in r.stays)
     if joined > plan.trip_long_weekends:
         out.append(

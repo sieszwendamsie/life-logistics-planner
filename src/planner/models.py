@@ -310,6 +310,10 @@ class YearPlan(BaseModel):
     # If set: nights between two stays, holidays included except the long summer
     # holiday, i.e. time away from the Faenza office (Martin: 4 to 6 weeks).
     away_nights: tuple[int, int] | None = None
+    # At most this many Faenza trips in the year (Martin: keep travel to a minimum).
+    # Wins over `away_nights`: the longest time away is stretched a week at a time
+    # until the trips fit, and the plan says so.
+    max_trips: int | None = Field(default=None, ge=1)
     # The second holiday starts where a stay ends or ends where one starts
     # (travel on from Faenza, e.g. to Garda or Croatia).
     second_holiday_joined: bool = False

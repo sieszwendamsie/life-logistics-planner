@@ -393,3 +393,10 @@ def test_celebration_days_are_marked_like_a_holiday() -> None:
     assert "Communion" in day15.title
     assert day15.kind == "holiday" or day15.off
     assert "Maybe" not in day22.title
+
+
+def test_max_trips_caps_the_number_of_stays() -> None:
+    free = build_year(_c(), ACC)
+    capped = build_year(_c(max_trips=4, away_nights=(14, 42)), ACC)
+    assert capped.stays and capped.trips <= 4
+    assert capped.trips <= free.trips
