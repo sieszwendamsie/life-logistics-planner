@@ -31,23 +31,20 @@ confirm. Two cheap tests were added with this audit (marked **new**).
 | Door to door ends at the office for a weekday arrival before 12:00, else Faenza | `_journey` | **new** `test_arriving_on_a_working_morning_goes_straight_to_the_office` |
 | Martin flying on a working day is a con (unpaid hours) | `_soft_cons` | `test_martin_flying_on_a_working_day_is_a_con` |
 | Avoid long weekends; note being in Italy on public holidays | `holidays.py`, `_soft_cons` | `test_holidays.py` |
+| Yearly rules: long holiday 28-31 days around the summer shutdown, two-week holiday (in the chosen months), winter extra at most 2 paid days, remote share 55-65 %, no stay overlapping a holiday | `year.check_year` (also printed by `planner year`) | `test_check_year_passes_for_a_good_plan`, `test_check_year_reports_broken_rules` |
+| Paula and Basia: prefer not shifting their arrival/return date (con per shifted leg) | `_soft_cons` | `test_family_flight_moves_to_the_weekend_in_good_hours` |
 | Total cost by kind | `build_options` | `test_options.py` (several) |
 
 ## 2. Missing or only partly enforced
 
 Bigger items are listed, not built.
 
-1. **Yearly holiday rules** (about 4 weeks around the summer shutdown, 2 weeks in
-   March or April, 1-2 extra days at the winter shutdown, long weekends via bridge
-   days). Not in code. The 2027 plan exists as a draft (PR #20) built with the
-   year-plan skill, not checked by tests. *Bigger.*
-2. **Remote/office split of 55-65 %.** Not computed anywhere. *Bigger.*
+1. ~~Yearly holiday rules~~ and 2. ~~remote share~~: now checked by `check_year` (section 1).
 3. **"Prefer being in Poland on public holidays"** is only a con (a note), not a
    ranking weight. Probably fine; confirm.
 4. **Never sleep near the airport.** Only implied: a bus or train must run on the
    flight day. No explicit check. *Cheap but low value.*
-5. **Paula and Basia: arrival may shift up to 4 days; prefer no shift.** The shift
-   limit is enforced, the "prefer no shift" part is not a ranking factor. *Medium.*
+5. ~~Paula and Basia prefer no shift~~: now a con (section 1).
 6. **Tiers 1 and 2 contain no Modlin by design**, but there is no test using the
    real tier list from `examples/constraints.yaml` (the test uses a small list).
    *Cheap, low value.*
@@ -79,4 +76,4 @@ Bigger items are listed, not built.
 | 14 | "Long weekend" = a public holiday on Monday or Thursday/Friday bridge | `holidays.py` | as tested |
 
 Suggested next step: confirm or correct items 1-5 and 7-8 (they change totals and
-door-to-door times most), then decide whether gaps 1 and 2 are worth building.
+door-to-door times most), then decide about the remaining gaps.

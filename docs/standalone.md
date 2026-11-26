@@ -11,6 +11,7 @@ runs as plain commands, on your laptop or on a schedule in GitHub.
 | Windows, options, scenarios | `uv run planner windows` / `options` / `scenarios` |
 | Year plan | `uv run planner year --out out/year.html` |
 | Flight times that can work + Ryanair links | `uv run planner routes --month 2027-02` |
+| Live Ryanair fares inside those windows | `uv run planner fares --month 2027-02` |
 | All pages in one go | `uv run planner build` (writes `out/site/index.html`) |
 
 ## One-time setup

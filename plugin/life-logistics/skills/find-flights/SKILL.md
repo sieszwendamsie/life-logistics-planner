@@ -59,11 +59,12 @@ than about 10 journeys in one go; ask Martin before doing more.
 Every flight check goes through one of these sources, in this order. Use the first
 that works and record which one it was in `source_url`:
 
-1. **A live-fare helper in this repo**, if one exists (look for a `planner fares`
-   command or a module under `src/planner/` that fetches Ryanair or Wizz fares;
-   `uv run planner --help` lists commands). It must return the flight number,
-   times, price and the check date, straight from the airline's own data. Use it
-   for discovery and confirmation, and still open the airline page for finalists.
+1. **A live-fare helper in this repo**, if one exists. Today:
+   `uv run planner fares --month YYYY-MM` (Ryanair only; Wizz is not covered).
+   It lists the days inside the time windows with times, price, source and check
+   time. It shows the cheapest flight per day and no flight number, so results are
+   candidates: still open the airline page for finalists. A route marked
+   "NOT live-checked" means the API was blocked or changed: use step 2 for it.
 2. **The airline's own site in the browser** (section 2 below).
 3. **Momondo**, only to discover other airlines or a cheaper fare.
 
