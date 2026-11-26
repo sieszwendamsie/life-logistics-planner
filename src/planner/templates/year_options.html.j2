@@ -1,4 +1,15 @@
 {% from "_wall.j2" import wall %}
+{% macro summary(o) %}
+<div class="kv">
+          <span>Days off in breaks of 3+ days</span><span class="{{ 'best' if o.best_off }}">{{ o.r.days_off_in_breaks }}</span>
+          <span>Paid days used</span><span class="{{ 'best' if o.best_paid }}">{{ o.r.paid_days_off }}</span>
+          <span>Days off per paid day</span><span>{{ '%.1f' | format(o.r.days_off_in_breaks / o.r.paid_days_off) }}</span>
+          <span>Breaks of 3+ days</span><span>{{ o.r.breaks | length }}</span>
+          <span>Round trips to Faenza</span><span class="{{ 'best' if o.best_trips }}">{{ o.r.trips }}</span>
+          <span>Nights in Faenza</span><span>{{ o.faenza }}</span>
+          <span>Remote work</span><span>{{ (o.r.remote_share * 100) | round | int }}%</span>
+        </div>
+{% endmacro %}
 <title>{{ year }} Year Options</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 {% include "_year_style.j2" %}
@@ -12,6 +23,7 @@
 nav.jump { display: flex; flex-wrap: wrap; gap: 8px; }
 nav.jump a { color: var(--accent); font-weight: 600; text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 2px 12px; background: var(--surface); }
 nav.jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.summary { max-width: 420px; }
 .optsec { display: grid; gap: 14px; border-top: 1px solid var(--line); padding-top: 24px; }
 </style>
 <main>
@@ -27,15 +39,7 @@ nav.jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
       <div class="card opt">
         <h3>{{ o.r.label }}</h3>
         <p class="note">{{ o.r.note }}</p>
-        <div class="kv">
-          <span>Days off in breaks of 3+ days</span><span class="{{ 'best' if o.best_off }}">{{ o.r.days_off_in_breaks }}</span>
-          <span>Paid days used</span><span class="{{ 'best' if o.best_paid }}">{{ o.r.paid_days_off }}</span>
-          <span>Days off per paid day</span><span>{{ '%.1f' | format(o.r.days_off_in_breaks / o.r.paid_days_off) }}</span>
-          <span>Breaks of 3+ days</span><span>{{ o.r.breaks | length }}</span>
-          <span>Round trips to Faenza</span><span class="{{ 'best' if o.best_trips }}">{{ o.r.trips }}</span>
-          <span>Nights in Faenza</span><span>{{ o.faenza }}</span>
-          <span>Remote work</span><span>{{ (o.r.remote_share * 100) | round | int }}%</span>
-        </div>
+        {{ summary(o) }}
         <a href="#{{ o.anchor }}" class="note">See the calendar ↓</a>
       </div>
       {% endfor %}
@@ -47,6 +51,10 @@ nav.jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
   <section class="optsec" id="{{ o.anchor }}">
     <h2>{{ o.r.label }}</h2>
     <p class="sub">{{ o.r.note }}</p>
+    <div class="card opt summary">
+      {{ summary(o) }}
+      <p class="note">Green marks the best of the three options.</p>
+    </div>
     {{ wall(o.months, year, o.anchor) }}
     <div class="grid2">
       <div class="card table-wrap">
