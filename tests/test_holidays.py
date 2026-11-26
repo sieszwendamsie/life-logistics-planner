@@ -77,6 +77,7 @@ def test_family_flight_moves_to_the_weekend_in_good_hours() -> None:
     assert out.choice and out.choice.id == "sat"
     assert back.choice and back.choice.id == "sun-early"  # weekend beats good hours
     assert any("outside 10:00-18:00" in x for x in drive.cons)
+    assert any("rather not shift" in x for x in drive.cons)
     assert (drive.family_start, drive.family_end) == (date(2027, 2, 13), date(2027, 2, 28))
 
 

@@ -205,3 +205,24 @@ def test_rhythm_follows_remote_share() -> None:
         if not _c().day_off(st.start + __import__("datetime").timedelta(days=i))
     )
     assert office >= r.office_days  # holidays never fall inside a stay
+
+
+def test_check_year_passes_for_a_good_plan() -> None:
+    from planner.year import check_year
+
+    c = _c(second_holiday_months=[3, 4])
+    r = build_year(c, ACC)
+    assert check_year(c, r) == []
+
+
+def test_check_year_reports_broken_rules() -> None:
+    from planner.year import check_year
+
+    c = _c(second_holiday_months=[3])
+    r = build_year(c, ACC)
+    r.plan = r.plan.model_copy(update={"remote_share": (0.9, 0.95), "second_holiday_months": [11]})
+    problems = " ".join(check_year(c, r))
+    assert "Remote share" in problems
+    assert "Second holiday starts in month" in problems
+    r.long_pick = None
+    assert "No long holiday" in " ".join(check_year(c, r))
