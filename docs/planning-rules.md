@@ -34,7 +34,9 @@ Real values (home address, prices) live in the gitignored `data/` files.
   - Long weekends wherever an Italian holiday makes one cheap (bridge days).
     Up to 3 of them (`year_plan.trip_long_weekends`) may be spent in Faenza when a
     stay starts or ends with one, so travel falls on the free days (Martin, 26 Nov
-    2026). Never in the middle of a stay.
+    2026). Never in the middle of a stay, unless `year_plan.long_weekends_anywhere`
+    is on: then they may fall inside a stay too, which allows 4 to 5 trips a year
+    at 50 to 60% Faenza time (Martin asked for 4 to 5 trips, 26 Nov 2026).
   - The winter shutdown is usually busy: add at most 1 to 2 extra days to it.
 - **Avoid peak prices** where possible: school-holiday peaks and long weekends.
 - **Where**: not part of the plan yet.

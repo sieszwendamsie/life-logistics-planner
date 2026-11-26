@@ -333,7 +333,7 @@ def _candidates(
                 continue
             if any(_overlaps(s, e, r) for r in no_go):
                 continue
-            if bridges and not _edge_only(c, s, e, bridges):
+            if bridges and not plan.long_weekends_anywhere and not _edge_only(c, s, e, bridges):
                 continue
             office = [o for o in c.martin_italy() if _overlaps(s, e, o)]
             # Office periods must lie fully inside, without travelling on them.
@@ -516,7 +516,8 @@ def work_split(
 # Stay and gap lengths (nights) to try when the configured rhythm misses the
 # remote-work share. The configured one is always tried first.
 RHYTHMS = [
-    (28, 42, 21, 35),
+    (21, 35, 14, 35),
+    (28, 35, 14, 42),
     (21, 35, 21, 35),
     (21, 35, 14, 28),
     (28, 35, 14, 28),
@@ -617,6 +618,16 @@ def build_options(c: Constraints, acc: AccommodationFile) -> list[YearResult]:
                 "long_holiday_start": opt.long_holiday_start or plan.long_holiday_start,
                 "second_holiday_start": opt.second_holiday_start or plan.second_holiday_start,
                 "second_holiday_days": opt.second_holiday_days or plan.second_holiday_days,
+                "trip_long_weekends": (
+                    plan.trip_long_weekends
+                    if opt.trip_long_weekends is None
+                    else opt.trip_long_weekends
+                ),
+                "long_weekends_anywhere": (
+                    plan.long_weekends_anywhere
+                    if opt.long_weekends_anywhere is None
+                    else opt.long_weekends_anywhere
+                ),
                 "options": [],
             }
         )

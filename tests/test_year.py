@@ -308,3 +308,27 @@ def test_print_sheets_have_calendar_and_summary_per_option() -> None:
     html = render_options(c, build_options(c, ACC), "year_print.html.j2")
     assert html.count('class="sheet"') == 4  # front and back for each option
     assert "A4 landscape" in html and "B: summary" in html
+
+
+def test_long_weekends_anywhere_allows_a_bridge_inside_a_stay() -> None:
+    from planner.models import YearOption
+    from planner.year import build_options
+
+    # Bridge days on every Thursday-Friday of May: only allowed inside a stay if the
+    # option says long weekends may fall anywhere in it.
+    may = [date(2027, 5, d) for d in (6, 7, 13, 14, 20, 21)]
+    strict, loose = build_options(
+        _c(
+            options=[
+                YearOption(label="edge", bridge_days=may, trip_long_weekends=9),
+                YearOption(
+                    label="any", bridge_days=may, trip_long_weekends=9, long_weekends_anywhere=True
+                ),
+            ]
+        ),
+        ACC,
+    )
+    cb = with_bridges(_c(), may)
+    for st in strict.stays:
+        assert _edge_only(cb, st.start, st.end, frozenset(may))
+    assert loose.plan.long_weekends_anywhere and not strict.plan.long_weekends_anywhere

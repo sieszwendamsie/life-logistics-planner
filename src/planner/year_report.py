@@ -282,4 +282,5 @@ def render_options(
         year=year,
         peaks=results[0].plan.peaks,
         max_lw=results[0].plan.trip_long_weekends,
+        anywhere=results[0].plan.long_weekends_anywhere,
     )

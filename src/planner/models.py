@@ -264,6 +264,9 @@ class YearOption(BaseModel):
     # Length of the second holiday in days (min, max), if not the plan's 14-17,
     # e.g. (7, 10) for one week around a family event.
     second_holiday_days: tuple[int, int] | None = None
+    # Overrides of the plan's settings of the same name, for this option only.
+    trip_long_weekends: int | None = None
+    long_weekends_anywhere: bool | None = None
     # Paid working days taken off to turn a public holiday into a long weekend.
     bridge_days: list[date] = Field(default_factory=list)
 
@@ -299,6 +302,9 @@ class YearPlan(BaseModel):
     # At most this many bridge-day long weekends may be spent in Faenza, joined to
     # the start or end of a stay (travel on the free days around them).
     trip_long_weekends: int = Field(default=3, ge=0)
+    # If true, such a long weekend may also fall in the middle of a stay (spent at
+    # La Suite), which allows longer stays and fewer trips.
+    long_weekends_anywhere: bool = False
     # Months the two-week holiday should fall in (empty: any month), e.g. [3, 4].
     second_holiday_months: list[int] = Field(default_factory=list)
     # Pick these holidays (by start date) instead of the best-ranked ones.
