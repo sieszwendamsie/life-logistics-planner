@@ -17,6 +17,7 @@ from pathlib import Path
 from planner import __version__
 from planner.fares import FareError, describe, month_fares
 from planner.loaders import load_accommodation, load_constraints, load_options
+from planner.models import Constraints
 from planner.options import Option, build_options, shortlist
 from planner.report import parse_variant, render, scenario, write
 from planner.routes import route_windows, table
@@ -149,6 +150,13 @@ def build_parser() -> argparse.ArgumentParser:
             f"--{name}", type=Path, default=default, help=f"{name} file (default: {default})"
         )
     year.add_argument("--out", type=Path, help="also write the plan as an HTML page here")
+    year.add_argument(
+        "--print",
+        dest="print_out",
+        type=Path,
+        help="also write a black-and-white A4 landscape page to print (calendar on the "
+        "front, summary on the back of each sheet); print it to PDF from a browser",
+    )
     return parser
 
 
@@ -210,6 +218,7 @@ def _cmd_year(args: argparse.Namespace) -> int:
             from planner.year_report import render_options
 
             print(f"Wrote {write(render_options(c, results), args.out)}")
+        _write_print(c, results, args.print_out)
         return 0
     result = build_year(c, acc)
     print(text(c, result))
@@ -217,7 +226,15 @@ def _cmd_year(args: argparse.Namespace) -> int:
         from planner.year_report import render_year
 
         print(f"Wrote {write(render_year(c, result), args.out)}")
+    _write_print(c, [result], args.print_out)
     return 0
+
+
+def _write_print(c: Constraints, results: list, out: Path | None) -> None:
+    if out:
+        from planner.year_report import render_options
+
+        print(f"Wrote {write(render_options(c, results, 'year_print.html.j2'), out)}")
 
 
 def _cmd_routes(args: argparse.Namespace) -> int:

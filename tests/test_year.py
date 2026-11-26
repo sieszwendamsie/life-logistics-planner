@@ -296,3 +296,15 @@ def test_check_year_caps_long_weekends_in_faenza() -> None:
     assert r.stays
     r.stays[0].long_weekends = ["08 Dec-12 Dec"]
     assert any("long weekends are joined" in p for p in check_year(_c(trip_long_weekends=0), r))
+
+
+def test_print_sheets_have_calendar_and_summary_per_option() -> None:
+    from planner.models import YearOption
+    from planner.year import build_options
+    from planner.year_report import render_options
+
+    opts = [YearOption(label="A"), YearOption(label="B", bridge_days=[date(2027, 12, 9)])]
+    c = _c(options=opts)
+    html = render_options(c, build_options(c, ACC), "year_print.html.j2")
+    assert html.count('class="sheet"') == 4  # front and back for each option
+    assert "A4 landscape" in html and "B: summary" in html

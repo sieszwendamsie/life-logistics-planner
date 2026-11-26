@@ -235,8 +235,11 @@ def _why(c: Constraints, r: YearResult, b: Block) -> str:
     return "Days off"
 
 
-def render_options(c: Constraints, results: list[YearResult]) -> str:
-    """Several alternative years on one page, compared side by side."""
+def render_options(
+    c: Constraints, results: list[YearResult], template: str = "year_options.html.j2"
+) -> str:
+    """Several alternative years on one page, compared side by side. With
+    template="year_print.html.j2": a black-and-white A4 sheet per option to print."""
     from planner.year import with_bridges
 
     views = []
@@ -274,7 +277,7 @@ def render_options(c: Constraints, results: list[YearResult]) -> str:
         lstrip_blocks=True,
     )
     year = results[0].plan.year
-    return env.get_template("year_options.html.j2").render(
+    return env.get_template(template).render(
         options=views,
         year=year,
         peaks=results[0].plan.peaks,

@@ -22,7 +22,7 @@ No web app in the MVP.
 - `uv run planner report --back ... [--variant "LABEL:solo_max_days=9"]`: scenarios as a page in out/report.html
 - `uv run planner routes --month YYYY-MM`: flight times that can work per route, with Ryanair month links
 - `uv run planner fares --month YYYY-MM [--route POZ-BGY] [--who martin] [--refresh]`: live Ryanair fares per route inside those windows (cached 12 h; says so if it cannot reach Ryanair)
-- `uv run planner year --out out/year.html`: draft plan of a whole year (holidays, then stays)
+- `uv run planner year --out out/year.html [--print out/year_print.html]`: draft plan of a whole year (holidays, then stays); --print writes black-and-white A4 sheets to print to PDF
 - Skills (run in Claude Code): `/import-calendar`, `/plan-next-stay`, `/plan-year`, `/find-flights`
 
 ## Owner
