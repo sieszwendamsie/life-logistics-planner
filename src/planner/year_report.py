@@ -24,6 +24,7 @@ class Cell:
     off: bool = False  # a free day off inside a Faenza stay (outlined in holiday colour)
     suite_blocked: bool = False  # La Suite not free that night while you're not in Faenza
     event: str = ""  # "M" a motorcycle event, "E" a family event (#must presence)
+    hl: bool = False  # highlighted: one of the proposals compared on the page (tag "pick...")
 
 
 def _span(a: date, b: date) -> list[date]:
@@ -110,10 +111,16 @@ def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell], int]]:
     it = {h.day: h.name for h in c.holidays if h.country == "IT"}
     pl = {h.day: h.name for h in c.holidays if h.country == "PL"}
     free = free_days_off(c, r.plan.year)
+    picks = {
+        d: p.tag.removeprefix("pick")
+        for p in c.presence
+        if p.tag.startswith("pick")
+        for d in _span(p.start, p.end)
+    }
     marks = {
         d: ("M" if p.tag == "moto" else "E") + ("" if p.strength == "must" else "?")
         for p in c.presence
-        if p.strength == "must" or p.tag
+        if (p.strength == "must" or p.tag) and not p.tag.startswith("pick")
         for d in _span(p.start, p.end)
     }
     for d, name in celebrations(c).items():
@@ -141,7 +148,8 @@ def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell], int]]:
                     title=f"{d:%a %d %b}: {title}" + (f" · {' · '.join(extra)}" if extra else ""),
                     off=kind in ("stay", "solo") and d in free,
                     suite_blocked=kind not in ("stay", "solo") and d in blocked,
-                    event=marks.get(d, ""),
+                    event=picks.get(d) or marks.get(d, ""),
+                    hl=d in picks,
                 )
             )
             d += timedelta(days=1)
@@ -324,7 +332,9 @@ def render_options(
                         + ("" if p.strength == "must" else "?"),
                     }
                     for p in sorted(c.presence, key=lambda p: p.start)
-                    if (p.strength == "must" or p.tag) and p.start.year == r.plan.year
+                    if (p.strength == "must" or p.tag)
+                    and not p.tag.startswith("pick")
+                    and p.start.year == r.plan.year
                 ],
             }
         )

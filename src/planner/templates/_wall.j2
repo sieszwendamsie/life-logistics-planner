@@ -30,7 +30,7 @@
         <div class="m">{{ name }}</div>
         {% if mode == "week" %}{% for _ in range(lead) %}<div></div>{% endfor %}{% endif %}
         {% for cell in cells %}
-        <div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}{% if cell.off %} off{% endif %}{% if cell.suite_blocked %} sb{% endif %}" title="{{ cell.title }}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}{% if cell.event %}<b class="ev">{{ cell.event }}</b>{% endif %}</div>
+        <div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}{% if cell.off %} off{% endif %}{% if cell.suite_blocked %} sb{% endif %}{% if cell.hl %} hl{% endif %}" title="{{ cell.title }}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}{% if cell.event %}<b class="ev">{{ cell.event }}</b>{% endif %}</div>
         {% endfor %}
       </div>
       {% endfor %}

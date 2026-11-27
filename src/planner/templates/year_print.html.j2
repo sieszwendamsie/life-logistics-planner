@@ -92,7 +92,7 @@ ul { margin: 0; padding-left: 4mm; font-size: 8.5pt; }
     {% for name, cells, lead in o.months %}
     <div class="m">{{ name }}</div>
     {% for _ in range(lead) %}<div class="blank"></div>{% endfor %}
-    {% for cell in cells %}<div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}{% if cell.off %} off{% endif %}{% if cell.suite_blocked %} sb{% endif %}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}{% if cell.event %}<b class="ev">{{ cell.event }}</b>{% endif %}</div>{% endfor %}
+    {% for cell in cells %}<div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}{% if cell.off %} off{% endif %}{% if cell.suite_blocked %} sb{% endif %}{% if cell.hl %} hl{% endif %}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}{% if cell.event %}<b class="ev">{{ cell.event }}</b>{% endif %}</div>{% endfor %}
     {% for _ in range(37 - lead - cells | length) %}<div class="blank"></div>{% endfor %}
     {% endfor %}
   </div>
