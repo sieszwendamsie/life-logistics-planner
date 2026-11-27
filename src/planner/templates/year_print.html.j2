@@ -1,0 +1,159 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>{{ year }} Year Plan, print</title>
+{#
+  Black-and-white A4 landscape sheets: for each option a calendar page (weekends lined
+  up in columns) and then its summary page, so printed double-sided each option is one
+  sheet. Shades and patterns instead of colour, so a black-only printer shows them.
+#}
+<style>
+@page { size: A4 landscape; margin: 9mm 10mm; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+html { background: #fff; color: #000; }
+body { margin: 0; font: 9.5pt/1.35 "Helvetica Neue", Arial, sans-serif; }
+.sheet { width: 277mm; height: 191mm; overflow: hidden; page-break-after: always; break-after: page; display: flex; flex-direction: column; gap: 3mm; }
+.sheet:last-child { page-break-after: auto; break-after: auto; }
+@media screen { body { background: #ddd; padding: 10mm; } .sheet { background: #fff; padding: 9mm 10mm; width: 297mm; height: 210mm; margin: 0 auto 10mm; box-shadow: 0 1px 4px rgba(0,0,0,.3); } }
+h1 { font-size: 15pt; margin: 0; }
+h2 { font-size: 11pt; margin: 0 0 1.5mm; }
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 6mm; }
+.note { font-size: 8.5pt; }
+.legend { display: flex; flex-wrap: wrap; gap: 1.5mm 5mm; font-size: 8.5pt; align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 1.5mm; }
+.legend .sw { width: 5mm; height: 4mm; border: 0.3mm solid #000; display: inline-block; position: relative; }
+
+/* Day kinds: Poznań white; Faenza grey; La Suite blocked grey stripes;
+   holiday or free day off black; a free day off during a stay grey with a black frame. */
+.home { background: #fff; }
+.stay { background: #c4c4c4; }
+.trip { background: radial-gradient(#000 0.35mm, transparent 0.4mm) 0 0 / 1.6mm 1.6mm, #fff; }
+.solo { background: repeating-linear-gradient(135deg, #c4c4c4 0 1.2mm, #fff 1.2mm 2.2mm); }
+.holiday { background: #000; color: #fff; }
+.off { box-shadow: inset 0 0 0 0.8mm #000; }
+/* La Suite blocked while you're not in Faenza: a striped corner. */
+.sb { background-image: linear-gradient(135deg, transparent 60%, #d0d0d0 60%); }
+
+.grid { display: grid; grid-template-columns: 13mm repeat(37, 1fr); gap: 0.5mm; }
+.grid .m { font-weight: 700; font-size: 9pt; align-self: center; }
+.grid .wd { text-align: center; font-weight: 700; font-size: 8pt; padding-bottom: 0.5mm; }
+.grid .wd.we { text-decoration: underline; }
+.d { position: relative; height: 12.6mm; border: 0.25mm solid #000; font-size: 9pt; text-align: center; padding-top: 1mm; font-variant-numeric: tabular-nums; }
+.blank { height: 12.6mm; }
+/* Weekends: bold number with a bar under it, and a thicker frame. */
+.d.we { font-weight: 800; border-width: 0.6mm; }
+.d.we::after { content: ""; position: absolute; left: 25%; right: 25%; bottom: 1.2mm; height: 0.6mm; background: currentColor; }
+.d i { position: absolute; top: 0.8mm; width: 1.8mm; height: 1.8mm; border-radius: 50%; }
+.d i.it { right: 0.8mm; background: currentColor; }
+.d i.pl { left: 0.8mm; border: 0.35mm solid currentColor; }
+.holiday i.pl, .holiday i.it { border-color: #fff; }
+.d b.ev, .evk { position: absolute; bottom: 0.5mm; right: 0.6mm; font-size: 6.5pt; line-height: 1; font-weight: 800; padding: 0.3mm 0.6mm; background: #fff; color: #000; border: 0.25mm solid #000; }
+.evk { position: static; }
+.ev-list { display: grid; gap: 0.7mm; font-size: 7pt; margin-bottom: 1mm; }
+.ev-list .num { display: inline-block; min-width: 13mm; }
+.rowgap { grid-column: 1 / -1; height: 0.6mm; }
+
+.cols { display: grid; grid-template-columns: 62mm 1fr; gap: 4mm 6mm; align-items: start; flex: 1; min-height: 0; }
+.cols > .wide { grid-column: 1 / -1; }
+td, th { padding: 0.5mm 1.5mm; line-height: 1.25; }
+.wide td { font-size: 7.6pt; }
+.cols > div > table td { font-size: 7.8pt; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 1mm 4mm; font-size: 10pt; }
+.kv span:nth-child(even) { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.kv .best::after { content: " ★"; }
+table { border-collapse: collapse; width: 100%; font-size: 8.5pt; }
+th, td { text-align: left; padding: 1mm 1.5mm; border-bottom: 0.25mm solid #000; vertical-align: top; }
+th { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.03em; border-bottom-width: 0.5mm; }
+td.num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+ul { margin: 0; padding-left: 4mm; font-size: 8.5pt; }
+</style>
+
+{% for o in options %}
+<section class="sheet">
+  <div class="top">
+    <h1>{{ year }} · {{ o.r.label }}</h1>
+    <span class="note">{{ o.r.trips }} trips · {{ o.faenza }} nights in Faenza · {{ o.r.days_off_in_breaks }} days off for {{ o.r.paid_days_off }} paid · {{ ((1 - o.r.remote_share) * 100) | round | int }}% of working days in Faenza</span>
+  </div>
+  <div class="legend">
+    <span><i class="sw home"></i>Poznań</span>
+    <span><i class="sw stay"></i>Faenza, at La Suite</span>
+    <span><i class="sw solo"></i>Faenza, La Suite blocked (you alone)</span>
+    <span><i class="sw home sb"></i>La Suite blocked, you're not in Faenza</span>
+    <span><i class="sw trip"></i>Other trip (UK), remote work</span>
+    <span><i class="sw holiday"></i>Holiday, shutdown, Italian holiday or its long weekend, celebration (e.g. communion)</span>
+    <span><i class="sw stay off"></i>Same, during a Faenza stay</span>
+    <span><b>12</b>&nbsp;bold, thick frame = weekend</span>
+    <span>● Italian holiday</span>
+    <span>○ Polish holiday</span>
+    <span><b class="evk">M</b> motorcycle event · <b class="evk">E</b> family or work event · <b class="evk">M?</b> idea, not planned yet</span>
+  </div>
+  <div class="grid">
+    <div></div>
+    {% for i in range(37) %}<div class="wd{{ ' we' if i % 7 >= 5 }}">{{ ["Mo","Tu","We","Th","Fr","Sa","Su"][i % 7] }}</div>{% endfor %}
+    {% for name, cells, lead in o.months %}
+    <div class="m">{{ name }}</div>
+    {% for _ in range(lead) %}<div class="blank"></div>{% endfor %}
+    {% for cell in cells %}<div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}{% if cell.off %} off{% endif %}{% if cell.suite_blocked %} sb{% endif %}{% if cell.hl %} hl{% endif %}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}{% if cell.event %}<b class="ev">{{ cell.event }}</b>{% endif %}</div>{% endfor %}
+    {% for _ in range(37 - lead - cells | length) %}<div class="blank"></div>{% endfor %}
+    {% endfor %}
+  </div>
+</section>
+
+<section class="sheet">
+  <div class="top">
+    <h1>{{ year }} · {{ o.r.label }}: summary</h1>
+    <span class="note">Draft, nothing booked</span>
+  </div>
+  <p class="note" style="margin:0">{{ o.r.note }}</p>
+  <div class="cols">
+    <div>
+      <h2>In numbers</h2>
+      <div class="kv">
+        <span>Days off in breaks of 3+ days</span><span class="{{ 'best' if o.best_off }}">{{ o.r.days_off_in_breaks }}</span>
+        <span>Paid days used</span><span class="{{ 'best' if o.best_paid }}">{{ o.r.paid_days_off }}</span>
+        <span>Days off per paid day</span><span>{{ '%.1f' | format(o.r.days_off_in_breaks / o.r.paid_days_off) }}</span>
+        <span>Breaks of 3+ days</span><span>{{ o.r.breaks | length }}</span>
+        <span>Round trips to Faenza</span><span class="{{ 'best' if o.best_trips }}">{{ o.r.trips }}</span>
+        <span>Nights in Faenza</span><span>{{ o.faenza }}</span>
+        {% if o.cost_total is not none %}<span>Estimated cost of Faenza trips</span><span>€{{ '{:,}'.format(o.cost_total) }}{% if o.cost_missing %}*{% endif %}</span>{% endif %}
+        <span>Working days in Faenza</span><span>{{ ((1 - o.r.remote_share) * 100) | round | int }}%</span>
+      </div>
+      {% if options | length > 1 %}<p class="note">★ best of the {{ options | length }} options.</p>{% endif %}
+      {% if costs %}<p class="note">{{ costs.short_note }}</p>{% endif %}
+      {% if o.events %}
+      <h2 style="margin-top:3mm">Events</h2>
+      <div class="ev-list">
+        {% for e in o.events %}<div><span class="num">{{ e.short_dates }}</span> <b class="evk">{{ e.mark }}</b> {{ e.short }}{% if e.provisional %}*{% endif %}</div>{% endfor %}
+      </div>
+      {% if o.events | selectattr('provisional') | list %}<p class="note" style="margin:0">* not planned around yet: 2027 date not out (same weekend as 2026) or still an idea.</p>{% endif %}
+      {% endif %}
+    </div>
+    <div>
+      <h2>Breaks of 3 days or more</h2>
+      <table>
+        <thead><tr><th>Dates</th><th>Days</th><th>Paid</th><th>Why</th></tr></thead>
+        <tbody>
+        {% for b in o.breaks %}<tr><td class="num">{{ b.dates }}</td><td class="num">{{ b.days }}</td><td class="num">{{ b.paid }}</td><td>{{ b.why }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="wide">
+      <h2>Stays in Faenza</h2>
+      <table>
+        <thead><tr><th>Out</th><th>Home</th><th>Nights</th>{% if costs %}<th>Est. cost</th>{% endif %}<th>Notes</th></tr></thead>
+        <tbody>
+        {% for st in o.r.stays %}
+          {% set k = o.stay_costs[loop.index0] %}
+          <tr>
+            <td class="num">{{ st.start.strftime('%a %d %b') }}</td>
+            <td class="num">{{ st.end.strftime('%a %d %b') }}</td>
+            <td class="num">{{ st.nights }}</td>
+            {% if costs %}<td class="num">{% if k %}€{{ '{:,}'.format(k.la_suite + k.elsewhere + k.car + k.flights) }}{% if k.missing %}*{% endif %}{% endif %}</td>{% endif %}
+            <td>{% if k %}La Suite €{{ k.la_suite }}{% if k.elsewhere %}, elsewhere €{{ k.elsewhere }}{% endif %}, car €{{ k.car }}, family flights {% if k.missing %}not on sale yet*{% else %}€{{ k.flights }} ({{ k.out.route }} {{ k.out.day[8:10] }}/{{ k.out.day[5:7] }} {{ k.out.dep }}{% if k.back %}, {{ k.back.route }} {{ k.back.day[8:10] }}/{{ k.back.day[5:7] }} {{ k.back.dep }}{% else %}; home after the holiday, not included{% endif %}){% endif %}. {% endif %}{% if st.fixed %}{{ st.note }}. {% endif %}{% if st.blocked_nights %}La Suite blocked {{ st.blocked_nights }} night{{ 's' if st.blocked_nights != 1 }}. {% endif %}{% if st.long_weekends %}Long weekend in Faenza: {{ st.long_weekends | join(', ') }}. {% endif %}{% if st.pl_holidays %}Polish holiday: {{ st.pl_holidays | join(', ') }}.{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endfor %}

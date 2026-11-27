@@ -1,0 +1,126 @@
+{% from "_wall.j2" import wall %}
+{% macro summary(o) %}
+<div class="kv">
+          <span>Days off in breaks of 3+ days</span><span class="{{ 'best' if o.best_off }}">{{ o.r.days_off_in_breaks }}</span>
+          <span>Paid days used</span><span class="{{ 'best' if o.best_paid }}">{{ o.r.paid_days_off }}</span>
+          <span>Days off per paid day</span><span>{{ '%.1f' | format(o.r.days_off_in_breaks / o.r.paid_days_off) }}</span>
+          <span>Breaks of 3+ days</span><span>{{ o.r.breaks | length }}</span>
+          <span>Round trips to Faenza</span><span class="{{ 'best' if o.best_trips }}">{{ o.r.trips }}</span>
+          <span>Nights in Faenza</span><span>{{ o.faenza }}</span>
+        {% if o.cost_total is not none %}<span>Estimated cost of Faenza trips</span><span>€{{ '{:,}'.format(o.cost_total) }}{% if o.cost_missing %}*{% endif %}</span>{% endif %}
+          <span>Working days in Faenza</span><span>{{ ((1 - o.r.remote_share) * 100) | round | int }}%</span>
+        </div>
+{% endmacro %}
+<title>{{ year }} Year Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+{% include "_year_style.j2" %}
+<style>
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.opt h3 { margin: 0; font-family: var(--font-head); font-size: 1.1rem; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 0.9rem; }
+.kv span:nth-child(odd) { color: var(--muted); }
+.kv span:nth-child(even) { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+.best { color: var(--accent); }
+nav.jump { display: flex; flex-wrap: wrap; gap: 8px; }
+nav.jump a { color: var(--accent); font-weight: 600; text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 2px 12px; background: var(--surface); }
+nav.jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.summary { max-width: 420px; }
+.optsec { display: grid; gap: 14px; border-top: 1px solid var(--line); padding-top: 24px; }
+</style>
+<main>
+  <header style="display:grid; gap:8px">
+    <h1>{% if options | length > 1 %}{{ year }}: {{ options | length }} ways to plan the year{% else %}{{ year }}: the year plan{% endif %}</h1>
+    {% set pl = options[0].r.plan %}{% set rs = pl.remote_share %}<p class="sub">Each option keeps your rules: a summer holiday around the shutdown (about 4 weeks, unless the option says otherwise), a second holiday of {{ pl.second_holiday_days[0] }}–{{ pl.second_holiday_days[1] }} days{% if pl.second_holiday_joined %} that starts where a Faenza stay ends{% endif %}, at most 2 extra days at Christmas, {{ (rs[0] * 100) | round | int }}–{{ (rs[1] * 100) | round | int }}% remote work{% if pl.away_nights %}, never more than {{ (pl.away_nights[1] / 7) | round | int }} weeks away from the Faenza office (except the summer holiday){% endif %}, stays of at most 28 nights and the fewest trips that allows. They differ in which holidays, bridge days and UK weeks you take. Nothing is booked; flights are checked live per stay later.</p>
+  </header>
+
+  <section>
+    <h2>Side by side</h2>
+    <div class="opts">
+      {% for o in options %}
+      <div class="card opt">
+        <h3>{{ o.r.label }}</h3>
+        <p class="note">{{ o.r.note }}</p>
+        {{ summary(o) }}
+        <a href="#{{ o.anchor }}" class="note">See the calendar ↓</a>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="note">Green marks the best value in each row. Every trip starts and ends on a weekend or holiday, so travel never costs a working day. "Days off in breaks" counts only days of {{ year }}.</p>
+  </section>
+
+  {% for o in options %}
+  <section class="optsec" id="{{ o.anchor }}">
+    <h2>{{ o.r.label }}</h2>
+    <p class="sub">{{ o.r.note }}</p>
+    <div class="card opt summary">
+      {{ summary(o) }}
+      {% if options | length > 1 %}<p class="note">Green marks the best of the {{ options | length }} options.</p>{% endif %}
+    </div>
+    {{ wall(o.months, year, o.anchor) }}
+    <div class="grid2">
+      <div class="card table-wrap">
+        <h3 style="margin:0">Breaks of 3 days or more</h3>
+        <table>
+          <thead><tr><th>Dates</th><th>Days</th><th>Paid</th><th>Why</th></tr></thead>
+          <tbody>
+          {% for b in o.breaks %}
+            <tr><td class="num">{{ b.dates }}</td><td class="num">{{ b.days }}</td><td class="num">{{ b.paid }}</td><td>{{ b.why }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card table-wrap">
+        <h3 style="margin:0">Stays in Faenza</h3>
+        <table>
+          <thead><tr><th>Out</th><th>Home</th><th>Nights</th>{% if costs %}<th>Est. cost</th>{% endif %}<th>Notes</th></tr></thead>
+          <tbody>
+          {% for st in o.r.stays %}
+            {% set k = o.stay_costs[loop.index0] %}
+            <tr>
+              <td class="num">{{ st.start.strftime('%a %d %b') }}</td>
+              <td class="num">{{ st.end.strftime('%a %d %b') }}</td>
+              <td class="num">{{ st.nights }}</td>
+              {% if costs %}<td class="num">{% if k %}€{{ '{:,}'.format(k.la_suite + k.elsewhere + k.car + k.flights) }}{% if k.missing %}*{% endif %}{% endif %}</td>{% endif %}
+              <td>{% if k %}La Suite €{{ k.la_suite }}{% if k.elsewhere %}, elsewhere €{{ k.elsewhere }}{% endif %}, car €{{ k.car }}, family flights {% if k.missing %}not on sale yet*{% else %}€{{ k.flights }} ({{ k.out.route }} {{ k.out.day[8:10] }}/{{ k.out.day[5:7] }} {{ k.out.dep }}{% if k.back %}, {{ k.back.route }} {{ k.back.day[8:10] }}/{{ k.back.day[5:7] }} {{ k.back.dep }}{% else %}; home after the holiday, not included{% endif %}){% endif %}. {% endif %}{% if st.fixed %}{{ st.note }}. {% endif %}{% if st.blocked_nights %}La Suite blocked {{ st.blocked_nights }} night{{ 's' if st.blocked_nights != 1 }}. {% endif %}{% if st.long_weekends %}Long weekend in Faenza: {{ st.long_weekends | join(', ') }}. {% endif %}{% if st.pl_holidays %}Polish holiday: {{ st.pl_holidays | join(', ') }}.{% endif %}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if o.events %}
+      <div class="card table-wrap">
+        <h3 style="margin:0">Events</h3>
+        <table>
+          <thead><tr><th>Dates</th><th></th><th>Event</th></tr></thead>
+          <tbody>
+          {% for e in o.events %}
+            <tr><td class="num">{{ e.dates }}</td><td><b class="evk">{{ e.mark }}</b></td><td>{{ e.title }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endfor %}
+
+
+  {% if costs %}
+  <section class="card">
+    <h2>How the costs are estimated</h2>
+    <ul>
+      {% for n in costs.notes %}<li>{{ n }}</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+  <section class="card">
+    <h2>What all three assume</h2>
+    <ul>
+      <li>Holidays cost only their working days. Weekends, Italian holidays (2 June included) and shutdowns are free; Polish holidays are paid working days.</li>
+      <li>Bridge days are paid days off next to an Italian holiday that turn it into a long weekend. {% if anywhere %}Up to {{ max_lw }} of them are spent in Faenza, inside a stay (at La Suite) or next to its travel days, so stays can be longer and trips fewer.{% else %}Up to {{ max_lw }} of them can be spent in Faenza when a stay starts or ends there, so you travel on the free days; never in the middle of a stay.{% endif %}</li>
+      <li>Family dates come from your calendar: {% for p in presence %}{{ p.title }} ({{ p.start.strftime('%d %b') }}{% if p.end != p.start %}–{{ p.end.strftime('%d %b') }}{% endif %}, {{ 'must' if p.strength == 'must' else 'preferably' }} in {{ 'Poland' if p.where == 'PL' else 'Italy' if p.where == 'IT' else p.where }}){{ '; ' if not loop.last }}{% endfor %}.</li>
+      <li>February stay 31 Jan to 28 Feb is fixed (not approved yet).</li>
+      <li>School holidays used for prices: {% for p in peaks %}{{ p.name }} {{ p.start.strftime('%d %b') }}–{{ p.end.strftime('%d %b') }}{{ ', ' if not loop.last }}{% endfor %}.</li>
+    </ul>
+  </section>
+</main>

@@ -13,7 +13,15 @@ from planner.models import (
     StayRules,
     YearPlan,
 )
-from planner.year import build_year, holiday_blocks, long_weekends, winter_extras
+from planner.year import (
+    _edge_only,
+    build_year,
+    check_year,
+    holiday_blocks,
+    long_weekends,
+    winter_extras,
+    with_bridges,
+)
 from planner.year_report import questions, render_year
 
 RULES = StayRules(min_stay_days=14, max_stay_days=28, min_gap_days=14, max_gap_days=42)
@@ -226,3 +234,185 @@ def test_check_year_reports_broken_rules() -> None:
     assert "Second holiday starts in month" in problems
     r.long_pick = None
     assert "No long holiday" in " ".join(check_year(c, r))
+
+
+def test_options_compare_bridges_and_holidays() -> None:
+    from planner.models import YearOption
+    from planner.year import build_options
+    from planner.year_report import render_options
+
+    opts = [
+        YearOption(label="A", second_holiday_start=date(2027, 3, 6)),
+        YearOption(
+            label="B",
+            second_holiday_start=date(2027, 3, 6),
+            # Thu + Fri after Wed 8 Dec make a 5-day break; a Saturday is ignored.
+            bridge_days=[date(2027, 12, 9), date(2027, 12, 10), date(2027, 12, 11)],
+        ),
+    ]
+    c = _c(second_holiday_months=[3, 4], options=opts)
+    a, b = build_options(c, ACC)
+    assert (a.label, b.label) == ("A", "B")
+    assert b.bridges == [date(2027, 12, 9), date(2027, 12, 10)]
+    assert b.paid_days_off == a.paid_days_off + 2
+    dec = [x for x in b.breaks if x.start <= date(2027, 12, 8) <= x.end]
+    assert dec and (dec[0].start, dec[0].end) == (date(2027, 12, 8), date(2027, 12, 12))
+    assert b.days_off_in_breaks == a.days_off_in_breaks + 5
+    cb = with_bridges(c, b.bridges)
+    for st in b.stays:  # a bridge day only in the long weekend next to travel
+        assert _edge_only(cb, st.start, st.end, frozenset(b.bridges))
+    html = render_options(c, [a, b])
+    assert "Bridge day, paid" in html and "Side by side" in html
+
+
+def test_no_holiday_periods_are_respected() -> None:
+    quiet = [
+        DateRange(start=date(2027, 1, 1), end=date(2027, 2, 28)),
+        DateRange(start=date(2027, 9, 15), end=date(2027, 12, 31)),
+    ]
+    r = build_year(_c(no_holiday=quiet), ACC)
+    for b in r.second_options + r.long_options:
+        assert not any(b.start <= q.end and q.start <= b.end for q in quiet)
+    # A pinned holiday inside a quiet period is refused, so none lands there.
+    from planner.year import check_year
+
+    c = _c(no_holiday=quiet, second_holiday_start=date(2027, 10, 23))
+    assert not any("no-holiday" in p for p in check_year(c, build_year(c, ACC)))
+
+
+def test_long_weekend_joins_a_stay_only_next_to_travel() -> None:
+    c = with_bridges(_c(), [date(2027, 12, 9), date(2027, 12, 10)])  # Wed 8 Dec to Sun 12
+    br = frozenset([date(2027, 12, 9), date(2027, 12, 10)])
+    # Ends on Sun 12 Dec after the long weekend in Faenza: fine.
+    assert _edge_only(c, date(2027, 11, 21), date(2027, 12, 12), br)
+    # Starts on Wed 8 Dec, spending the long weekend in Faenza first: fine.
+    assert _edge_only(c, date(2027, 12, 8), date(2027, 12, 23), br)
+    # Long weekend in the middle, with working days on both sides: not allowed.
+    assert not _edge_only(c, date(2027, 12, 4), date(2027, 12, 19), br)
+
+
+def test_check_year_caps_long_weekends_in_faenza() -> None:
+    r = build_year(_c(trip_long_weekends=0), ACC)
+    assert r.stays
+    r.stays[0].long_weekends = ["08 Dec-12 Dec"]
+    assert any("long weekends are joined" in p for p in check_year(_c(trip_long_weekends=0), r))
+
+
+def test_print_sheets_have_calendar_and_summary_per_option() -> None:
+    from planner.models import YearOption
+    from planner.year import build_options
+    from planner.year_report import render_options
+
+    opts = [YearOption(label="A"), YearOption(label="B", bridge_days=[date(2027, 12, 9)])]
+    c = _c(options=opts)
+    html = render_options(c, build_options(c, ACC), "year_print.html.j2")
+    assert html.count('class="sheet"') == 4  # front and back for each option
+    assert "A4 landscape" in html and "B: summary" in html
+
+
+def test_long_weekends_anywhere_allows_a_bridge_inside_a_stay() -> None:
+    from planner.models import YearOption
+    from planner.year import build_options
+
+    # Bridge days on every Thursday-Friday of May: only allowed inside a stay if the
+    # option says long weekends may fall anywhere in it.
+    may = [date(2027, 5, d) for d in (6, 7, 13, 14, 20, 21)]
+    strict, loose = build_options(
+        _c(
+            options=[
+                YearOption(label="edge", bridge_days=may, trip_long_weekends=9),
+                YearOption(
+                    label="any", bridge_days=may, trip_long_weekends=9, long_weekends_anywhere=True
+                ),
+            ]
+        ),
+        ACC,
+    )
+    cb = with_bridges(_c(), may)
+    for st in strict.stays:
+        assert _edge_only(cb, st.start, st.end, frozenset(may))
+    assert loose.plan.long_weekends_anywhere and not strict.plan.long_weekends_anywhere
+
+
+def test_options_page_shows_estimated_costs_when_given() -> None:
+    from planner.models import YearOption
+    from planner.year import build_options
+    from planner.year_report import render_options
+
+    c = _c(options=[YearOption(label="A")])
+    (r,) = build_options(c, ACC)
+    st = r.stays[0]
+    row = {
+        "start": st.start.isoformat(),
+        "la_suite": 100,
+        "elsewhere": 0,
+        "car": 400,
+        "flights": 0,
+        "missing": ["out", "back"],
+        "out": None,
+        "back": None,
+    }
+    costs = {
+        "checked": "today",
+        "la_suite_eur_per_night": 50,
+        "notes": ["note one"],
+        "short_note": "short",
+        "options": {"A": [row]},
+    }
+    html = render_options(c, [r], costs=costs)
+    assert "Estimated cost of Faenza trips" in html and "€500*" in html and "note one" in html
+    assert "Estimated cost" not in render_options(c, [r])
+
+
+def test_celebration_days_are_marked_like_a_holiday() -> None:
+    from planner.models import Presence
+    from planner.year_report import _months
+
+    c = _c()
+    c.presence = [
+        Presence(
+            title="Communion",
+            start=date(2027, 5, 15),
+            end=date(2027, 5, 15),
+            where="PL",
+            who=["Martin"],
+            strength="must",
+        ),
+        Presence(
+            title="Maybe",
+            start=date(2027, 5, 22),
+            end=date(2027, 5, 22),
+            where="PL",
+            who=["Martin"],
+            strength="pref",
+        ),
+    ]
+    r = build_year(c, ACC)
+    may = next(cells for name, cells, _ in _months(c, r) if name == "May")
+    day15, day22 = may[14], may[21]
+    assert "Communion" in day15.title
+    assert day15.kind == "holiday" or day15.off
+    assert "Maybe" not in day22.title
+
+
+def test_max_trips_caps_the_number_of_stays() -> None:
+    free = build_year(_c(), ACC)
+    capped = build_year(_c(max_trips=4, away_nights=(14, 42)), ACC)
+    assert capped.stays and capped.trips <= 4
+    assert capped.trips <= free.trips
+
+
+def test_option_fixed_stays_and_extra_holidays() -> None:
+    from planner.models import FixedStay, YearOption
+    from planner.year import build_options
+
+    opt = YearOption(
+        label="D",
+        long_holiday_days=(21, 23),
+        fixed_stays=[FixedStay(start=date(2027, 6, 27), end=date(2027, 7, 25))],
+        extra_holidays=[DateRange(start=date(2027, 9, 11), end=date(2027, 9, 19))],
+    )
+    (r,) = build_options(_c(options=[opt]), ACC)
+    assert any(st.start == date(2027, 6, 27) and st.fixed for st in r.stays)
+    assert any(b.start == date(2027, 9, 11) for b in r.holidays)
+    assert r.long_pick and 21 <= r.long_pick.days <= 23

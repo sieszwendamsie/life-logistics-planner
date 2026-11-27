@@ -32,9 +32,41 @@ Real values (home address, prices) live in the gitignored `data/` files.
   - One long holiday of about 4 weeks, built around the summer shutdown.
   - One 2-week holiday.
   - Long weekends wherever an Italian holiday makes one cheap (bridge days).
+    Up to 3 of them (`year_plan.trip_long_weekends`) may be spent in Faenza when a
+    stay starts or ends with one, so travel falls on the free days (Martin, 26 Nov
+    2026). Never in the middle of a stay, unless `year_plan.long_weekends_anywhere`
+    is on: then they may fall inside a stay too, which allows 4 to 5 trips a year
+    at 50 to 60% Faenza time (Martin asked for 4 to 5 trips, 26 Nov 2026).
   - The winter shutdown is usually busy: add at most 1 to 2 extra days to it.
 - **Avoid peak prices** where possible: school-holiday peaks and long weekends.
 - **Where**: not part of the plan yet.
+- **At least one week off around Basia's birthday** (5 to 13 March) in every plan
+  (Martin, 26 Nov 2026). An option may take it as one week
+  (`options[].second_holiday_days`) and spend other days elsewhere, such as the
+  week after Easter.
+- **Easter**: at least one option takes the extra days off in the week after
+  Easter Monday (30 to 31 March), not before.
+- **At most 4 to 6 weeks away from the Faenza office** between two stays, holidays
+  and UK trips included, except the long summer holiday (Martin, 26 Nov 2026;
+  `year_plan.away_nights`).
+- **At most 5 Faenza trips a year** (travel kept to a minimum; Martin, 26 Nov
+  2026; `year_plan.max_trips`). This wins over the 4 to 6 weeks above: the
+  planner stretches the longest time away a week at a time until 5 trips fit,
+  and says so. Stays may then hold a long weekend anywhere inside them
+  (`long_weekends_anywhere`).
+- **Avoid La Suite blocked nights in Faenza first**: they weigh more than the
+  remote share, the stay length or a missed #pref wish (Martin, 26 Nov 2026).
+- **One-week holiday end of April or early May**, starting where a Faenza stay
+  ends (travel on from Faenza, e.g. Garda or Croatia;
+  `second_holiday_joined`, `second_holiday_months: [4, 5]`,
+  `second_holiday_days: [7, 10]`). Basia's birthday is now a long weekend
+  (6 to 9 March), party in Poznań on the 7th.
+- **UK visits**: Martin can work remotely from the UK for a week or two; that
+  time counts as away from Faenza (`options[].other_travel`).
+- **No longer holidays from about 20 September to the end of the year, or in January
+  and February** (busy at work; Martin, 26 Nov 2026). Only long weekends there
+  (`year_plan.no_holiday`). The Christmas shutdown plus its 1 to 2 extra days
+  still counts.
 - **How the planner picks them** (`planner year`, settings under `year_plan`):
   - A holiday is a run of days off that starts right after a working day and ends
     right before one, so no free day next to it is wasted. Its cost is the paid
@@ -51,8 +83,10 @@ Real values (home address, prices) live in the gitignored `data/` files.
   - Christmas: the shutdown plus at most 2 paid days.
 
 ### Year plan (draft rhythm)
-- **Remote work 55 to 65% of working days** (Martin, 25 Nov 2026): the rest is
-  office time in Faenza. Working days leave out weekends, Italian holidays,
+- **Remote work 50 to 60% of working days** (Martin, 26 Nov 2026; was 55 to 65%),
+  so 40 to 50% in Faenza (`year_plan.remote_share: [0.50, 0.60]`). Stays are
+  never longer than `stay_rules.max_stay_days` (28): the planner only tries
+  rhythms within it. In 2027 that means 5 trips at about 42 to 43% in Faenza. Working days leave out weekends, Italian holidays,
   shutdowns and his holidays (`year_plan.remote_share`).
 - Stays in Faenza of 14 to 21 nights, with 28 to 42 nights in Poznań between
   them by default. The planner also tries other stay and gap lengths and keeps

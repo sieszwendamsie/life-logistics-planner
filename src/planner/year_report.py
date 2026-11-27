@@ -22,6 +22,13 @@ class Cell:
     pl: bool  # Polish public holiday
     title: str
     off: bool = False  # a free day off inside a Faenza stay (outlined in holiday colour)
+    suite_blocked: bool = False  # La Suite not free that night while you're not in Faenza
+    event: str = ""  # "M" a motorcycle event, "E" a family event (#must presence)
+    hl: bool = False  # highlighted: one of the proposals compared on the page (tag "pick...")
+
+
+def _span(a: date, b: date) -> list[date]:
+    return [a + timedelta(days=i) for i in range((b - a).days + 1)]
 
 
 def free_days_off(c: Constraints, year: int) -> dict[date, str]:
@@ -36,6 +43,10 @@ def free_days_off(c: Constraints, year: int) -> dict[date, str]:
     for h in c.holidays:
         if h.country == "IT" and h.day.weekday() < 5:
             seeds.setdefault(h.day, f"Italian holiday: {h.name}" if h.name else "Italian holiday")
+    leave = {d for r in c.leave for d in _span(r.start, r.end)}
+    # A day off taken on its own (a bridge day) also makes a long weekend.
+    for d in sorted(leave):
+        seeds.setdefault(d, "paid day off")
     # Mark every run of days off (weekends included) that holds such a day.
     days: dict[date, str] = {}
     d = date(year, 1, 1) - timedelta(days=14)
@@ -53,8 +64,22 @@ def free_days_off(c: Constraints, year: int) -> dict[date, str]:
             continue
         for x in run:
             if x.year == year:
-                days[x] = seeds.get(x) or f"Long weekend ({why})"
+                if x in leave:
+                    days[x] = f"Bridge day, paid ({why})"
+                else:
+                    days[x] = seeds.get(x) or f"Long weekend ({why})"
     return days
+
+
+def celebrations(c: Constraints) -> dict[date, str]:
+    """Days the family must be somewhere for an occasion (a #must presence event,
+    such as a communion or a birthday party). The calendar marks them like a holiday."""
+    return {
+        d: p.title or "Celebration"
+        for p in c.presence
+        if p.strength == "must"
+        for d in _span(p.start, p.end)
+    }
 
 
 def _kind(c: Constraints, r: YearResult, d: date, free: dict[date, str]) -> tuple[str, str]:
@@ -71,6 +96,8 @@ def _kind(c: Constraints, r: YearResult, d: date, free: dict[date, str]) -> tupl
             return "holiday", f"Holiday {b.start:%d %b} to {b.end:%d %b}"
     if d in free:
         return "holiday", free[d]
+    if any(t.start <= d <= t.end for t in r.other_travel):
+        return "trip", "Other trip (e.g. UK), working remotely"
     return "home", "Poznań"
 
 
@@ -78,10 +105,27 @@ def _blocked(st: Stay, d: date) -> bool:
     return d in st.blocked
 
 
-def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell]]]:
+def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell], int]]:
+    """Per month: its name, its days, and the weekday of the 1st (Mon 0), so the
+    weekday view can shift each row and stack weekends in the same columns."""
     it = {h.day: h.name for h in c.holidays if h.country == "IT"}
     pl = {h.day: h.name for h in c.holidays if h.country == "PL"}
     free = free_days_off(c, r.plan.year)
+    picks = {
+        d: p.tag.removeprefix("pick")
+        for p in c.presence
+        if p.tag.startswith("pick")
+        for d in _span(p.start, p.end)
+    }
+    marks = {
+        d: ("M" if p.tag == "moto" else "E") + ("" if p.strength == "must" else "?")
+        for p in c.presence
+        if (p.strength == "must" or p.tag) and not p.tag.startswith("pick")
+        for d in _span(p.start, p.end)
+    }
+    for d, name in celebrations(c).items():
+        free[d] = f"{name} · {free[d]}" if d in free else name
+    blocked = set(r.suite_blocked)
     rows = []
     for m in range(1, 13):
         first = date(r.plan.year, m, 1)
@@ -89,6 +133,8 @@ def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell]]]:
         d = first
         while d.month == m:
             kind, title = _kind(c, r, d, free)
+            if kind not in ("stay", "solo") and d in blocked:
+                title += " · La Suite blocked"
             extra = [f"IT: {it[d]}" for _ in [0] if d in it] + [
                 f"PL: {pl[d]}" for _ in [0] if d in pl
             ]
@@ -101,10 +147,13 @@ def _months(c: Constraints, r: YearResult) -> list[tuple[str, list[Cell]]]:
                     pl=d in pl,
                     title=f"{d:%a %d %b}: {title}" + (f" · {' · '.join(extra)}" if extra else ""),
                     off=kind in ("stay", "solo") and d in free,
+                    suite_blocked=kind not in ("stay", "solo") and d in blocked,
+                    event=picks.get(d) or marks.get(d, ""),
+                    hl=d in picks,
                 )
             )
             d += timedelta(days=1)
-        rows.append((first.strftime("%b"), cells))
+        rows.append((first.strftime("%b"), cells, first.weekday()))
     return rows
 
 
@@ -203,4 +252,113 @@ def render_year(c: Constraints, r: YearResult) -> str:
         stays=r.stays,
         assumptions=assumptions(c, r),
         questions=questions(c, r),
+    )
+
+
+def _why(c: Constraints, r: YearResult, b: Block) -> str:
+    """What makes a break: the planned holiday, a shutdown or an Italian holiday."""
+    for h in r.holidays:
+        if h.start <= b.start and b.end <= h.end or (b.start <= h.start and h.end <= b.end):
+            if h == r.long_pick:
+                return "Summer holiday (around the shutdown)"
+            return "Two-week holiday" if h.days >= 14 else f"{h.days}-day holiday"
+    if any(s.start <= b.end and b.start <= s.end for s in c.shutdown):
+        return "Christmas shutdown" if b.start.month in (12, 1) else "Shutdown"
+    names = [
+        h.name for h in c.holidays if h.country == "IT" and b.start <= h.day <= b.end and h.name
+    ]
+    if names:
+        return "Long weekend: " + ", ".join(dict.fromkeys(names))
+    if any(b.start <= d <= b.end for d in r.bridges):
+        return "Long weekend (day off)"
+    return "Days off"
+
+
+def render_options(
+    c: Constraints,
+    results: list[YearResult],
+    template: str = "year_options.html.j2",
+    costs: dict | None = None,
+) -> str:
+    """Several alternative years on one page, compared side by side. With
+    template="year_print.html.j2": a black-and-white A4 sheet per option to print."""
+    from planner.year import with_bridges
+
+    views = []
+    for i, r in enumerate(results):
+        cb = with_bridges(c, r.bridges)
+        brks = []
+        for b in r.breaks:
+            v = _block_view(b)
+            v["paid"] = sum(1 for d in r.bridges if b.start <= d <= b.end) + sum(
+                h.paid_days for h in r.holidays if b.start <= h.start and h.end <= b.end
+            )
+            v["why"] = _why(c, r, b)
+            brks.append(v)
+        per_stay = {row["start"]: row for row in (costs or {}).get("options", {}).get(r.label, [])}
+        stay_costs = [per_stay.get(st.start.isoformat()) for st in r.stays]
+        known = [x for x in stay_costs if x]
+        views.append(
+            {
+                "stay_costs": stay_costs,
+                "cost_total": sum(
+                    x["la_suite"] + x["elsewhere"] + x["car"] + x["flights"] for x in known
+                )
+                if known
+                else None,
+                "cost_missing": sum(1 for x in known if x["missing"]),
+                "r": r,
+                "anchor": f"option-{'abc'[i] if i < 3 else i}",
+                "months": _months(cb, r),
+                "breaks": brks,
+                "faenza": sum(st.nights for st in r.stays),
+                "events": [
+                    {
+                        "dates": p.start.strftime("%a %d %b")
+                        + ("" if p.end == p.start else " – " + p.end.strftime("%a %d %b")),
+                        "title": p.title,
+                        "short_dates": p.start.strftime("%d %b")
+                        if p.end == p.start
+                        else (
+                            f"{p.start:%d}–{p.end:%d %b}"
+                            if p.start.month == p.end.month
+                            else f"{p.start:%d %b}–{p.end:%d %b}"
+                        ),
+                        "short": p.title.split(" (")[0],
+                        "provisional": p.strength != "must"
+                        or "provisional" in p.title
+                        or "proposed" in p.title,
+                        "mark": ("M" if p.tag == "moto" else "E")
+                        + ("" if p.strength == "must" else "?"),
+                    }
+                    for p in sorted(c.presence, key=lambda p: p.start)
+                    if (p.strength == "must" or p.tag)
+                    and not p.tag.startswith("pick")
+                    and p.start.year == r.plan.year
+                ],
+            }
+        )
+    for key, attr, best in (
+        ("best_off", "days_off_in_breaks", max),
+        ("best_paid", "paid_days_off", min),
+        ("best_trips", "trips", min),
+    ):
+        top = best(getattr(v["r"], attr) for v in views)
+        for v in views:
+            v[key] = len(views) > 1 and getattr(v["r"], attr) == top
+    env = Environment(
+        loader=PackageLoader("planner", "templates"),
+        autoescape=select_autoescape(["html", "j2"]),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+    year = results[0].plan.year
+    return env.get_template(template).render(
+        options=views,
+        year=year,
+        peaks=results[0].plan.peaks,
+        max_lw=results[0].plan.trip_long_weekends,
+        costs=costs,
+        presence=c.presence,
+        anywhere=results[0].plan.long_weekends_anywhere,
     )

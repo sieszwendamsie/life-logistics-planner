@@ -1,0 +1,40 @@
+{% macro wall(months, year, key="wall") %}
+  <div class="cal">
+    <div class="view" role="radiogroup" aria-label="Calendar layout">
+      <label><input type="radio" name="{{ key }}-view" value="date" checked> By date</label>
+      <label><input type="radio" name="{{ key }}-view" value="week"> Weekends lined up</label>
+    </div>
+    <div class="legend">
+      <span style="--c: var(--home)">Poznań</span>
+      <span style="--c: var(--stay)">Faenza, at La Suite</span>
+      <span class="solo-key">Faenza, La Suite blocked (you alone)</span>
+      <span class="sb-key">La Suite blocked, you're not in Faenza (corner)</span>
+      <span style="--c: var(--trip)">Other trip (UK), working remotely</span>
+      <span style="--c: var(--holiday)">Holiday, shutdown, Italian holiday or its long weekend, celebration (e.g. communion)</span>
+      <span class="ring" style="--c: var(--holiday)">Same, during a Faenza stay</span>
+      <span class="ring" style="--c: var(--we-ring)">Weekend</span>
+      <span class="dot" style="--c: var(--it)">Italian holiday</span>
+      <span class="dot" style="--c: var(--pl)">Polish holiday</span>
+      <span><b class="evk">M</b> motorcycle event · <b class="evk">E</b> family or work event · <b class="evk">M?</b> idea, not planned yet</span>
+    </div>
+    {% for mode in ("date", "week") %}
+    <div class="wall {{ mode }}" role="img" aria-label="Calendar of {{ year }} coloured by where you are">
+      {% if mode == "week" %}
+      <div class="month head">
+        <div class="m"></div>
+        {% for i in range(37) %}<div class="wd{{ ' we' if i % 7 >= 5 }}">{{ "MTWTFSS"[i % 7] }}</div>{% endfor %}
+      </div>
+      {% endif %}
+      {% for name, cells, lead in months %}
+      <div class="month">
+        <div class="m">{{ name }}</div>
+        {% if mode == "week" %}{% for _ in range(lead) %}<div></div>{% endfor %}{% endif %}
+        {% for cell in cells %}
+        <div class="d {{ cell.kind }}{% if cell.weekend %} we{% endif %}{% if cell.off %} off{% endif %}{% if cell.suite_blocked %} sb{% endif %}{% if cell.hl %} hl{% endif %}" title="{{ cell.title }}">{{ cell.day }}{% if cell.it %}<i class="it"></i>{% endif %}{% if cell.pl %}<i class="pl"></i>{% endif %}{% if cell.event %}<b class="ev">{{ cell.event }}</b>{% endif %}</div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+{% endmacro %}

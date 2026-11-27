@@ -63,6 +63,8 @@ class Presence(DateRange):
     where: Literal["PL", "IT", "UK", "any"]
     who: list[Person]
     strength: Literal["must", "pref", "flex"] = "must"
+    # What kind of event, for the calendar marker: "" (family), "moto"...
+    tag: str = ""
 
 
 class RouteTier(BaseModel):
@@ -254,6 +256,32 @@ class FixedStay(DateRange):
     note: str = ""
 
 
+class YearOption(BaseModel):
+    """One alternative year: its own holidays and bridge days (`planner year`)."""
+
+    label: str
+    note: str = ""
+    long_holiday_start: date | None = None
+    second_holiday_start: date | None = None
+    # Length of the second holiday in days (min, max), if not the plan's 14-17,
+    # e.g. (7, 10) for one week around a family event.
+    second_holiday_days: tuple[int, int] | None = None
+    # Overrides of the plan's settings of the same name, for this option only.
+    trip_long_weekends: int | None = None
+    long_weekends_anywhere: bool | None = None
+    # Extra trips for this option only (e.g. a UK visit); no Faenza stay over them.
+    other_travel: list[DateRange] = Field(default_factory=list)
+    # Paid working days taken off to turn a public holiday into a long weekend.
+    bridge_days: list[date] = Field(default_factory=list)
+    # Stays already chosen for this option (added to the plan's fixed stays), e.g.
+    # flying on from a UK visit straight to Faenza.
+    fixed_stays: list[FixedStay] = Field(default_factory=list)
+    # Length of the summer holiday in days (min, max), if not the plan's.
+    long_holiday_days: tuple[int, int] | None = None
+    # More holidays on given dates (e.g. a week in mid-September).
+    extra_holidays: list[DateRange] = Field(default_factory=list)
+
+
 class YearPlan(BaseModel):
     """Settings for `planner year`: the draft plan of a whole year.
 
@@ -280,12 +308,34 @@ class YearPlan(BaseModel):
     # Share of working days Martin works remotely (outside Faenza stays). If the
     # stay rhythm above misses it, `planner year` tries other stay and gap lengths.
     remote_share: tuple[float, float] = (0.55, 0.65)
+    # No long or two-week holiday may touch these (busy at work); long weekends only.
+    no_holiday: list[DateRange] = Field(default_factory=list)
+    # At most this many bridge-day long weekends may be spent in Faenza, joined to
+    # the start or end of a stay (travel on the free days around them).
+    trip_long_weekends: int = Field(default=3, ge=0)
+    # If true, such a long weekend may also fall in the middle of a stay (spent at
+    # La Suite), which allows longer stays and fewer trips.
+    long_weekends_anywhere: bool = False
+    # If set: nights between two stays, holidays included except the long summer
+    # holiday, i.e. time away from the Faenza office (Martin: 4 to 6 weeks).
+    away_nights: tuple[int, int] | None = None
+    # Holidays on given dates, besides the summer and the second one.
+    extra_holidays: list[DateRange] = Field(default_factory=list)
+    # At most this many Faenza trips in the year (Martin: keep travel to a minimum).
+    # Wins over `away_nights`: the longest time away is stretched a week at a time
+    # until the trips fit, and the plan says so.
+    max_trips: int | None = Field(default=None, ge=1)
+    # The second holiday starts where a stay ends or ends where one starts
+    # (travel on from Faenza, e.g. to Garda or Croatia).
+    second_holiday_joined: bool = False
     # Months the two-week holiday should fall in (empty: any month), e.g. [3, 4].
     second_holiday_months: list[int] = Field(default_factory=list)
     # Pick these holidays (by start date) instead of the best-ranked ones.
     long_holiday_start: date | None = None
     second_holiday_start: date | None = None
     peaks: list[Peak] = Field(default_factory=list)
+    # Alternatives to compare side by side; empty means one plan from the settings above.
+    options: list[YearOption] = Field(default_factory=list)
 
 
 class Constraints(BaseModel):

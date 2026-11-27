@@ -17,6 +17,7 @@ from pathlib import Path
 from planner import __version__
 from planner.fares import FareError, describe, month_fares
 from planner.loaders import load_accommodation, load_constraints, load_options
+from planner.models import Constraints
 from planner.options import Option, build_options, shortlist
 from planner.report import parse_variant, render, scenario, write
 from planner.routes import route_windows, table
@@ -149,6 +150,13 @@ def build_parser() -> argparse.ArgumentParser:
             f"--{name}", type=Path, default=default, help=f"{name} file (default: {default})"
         )
     year.add_argument("--out", type=Path, help="also write the plan as an HTML page here")
+    year.add_argument(
+        "--print",
+        dest="print_out",
+        type=Path,
+        help="also write a black-and-white A4 landscape page to print (calendar on the "
+        "front, summary on the back of each sheet); print it to PDF from a browser",
+    )
     return parser
 
 
@@ -192,13 +200,51 @@ def _cmd_year(args: argparse.Namespace) -> int:
     if c.year_plan is None:
         print("No year_plan section in the constraints. See examples/constraints.yaml.")
         return 1
-    result = build_year(c, load_accommodation(args.accommodation))
+    acc = load_accommodation(args.accommodation)
+    if c.year_plan.options:
+        from planner.year import build_options
+
+        results = build_options(c, acc)
+        for r in results:
+            print(f"### {r.label}: {r.note}")
+            print(
+                f"{r.days_off_in_breaks} days off in breaks of 3+ days for {r.paid_days_off} "
+                f"paid days; {r.trips} round trips; bridge days: "
+                + (", ".join(f"{d:%d %b}" for d in r.bridges) or "none")
+            )
+            print(text(c, r))
+            print()
+        if args.out:
+            from planner.year_report import render_options
+
+            print(f"Wrote {write(render_options(c, results, costs=_year_costs()), args.out)}")
+        _write_print(c, results, args.print_out)
+        return 0
+    result = build_year(c, acc)
     print(text(c, result))
     if args.out:
         from planner.year_report import render_year
 
         print(f"Wrote {write(render_year(c, result), args.out)}")
+    _write_print(c, [result], args.print_out)
     return 0
+
+
+def _write_print(c: Constraints, results: list, out: Path | None) -> None:
+    if out:
+        from planner.year_report import render_options
+
+        page = render_options(c, results, "year_print.html.j2", costs=_year_costs())
+        print(f"Wrote {write(page, out)}")
+
+
+def _year_costs(path: Path = Path("data/year_costs.yaml")) -> dict | None:
+    """Estimated costs per stay (La Suite, elsewhere, car, family flights), if recorded."""
+    if not path.exists():
+        return None
+    import yaml
+
+    return yaml.safe_load(path.read_text())
 
 
 def _cmd_routes(args: argparse.Namespace) -> int:
